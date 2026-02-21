@@ -2,38 +2,102 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RP SMART | ORDER NOW</title>
-    <script>
-        const CLOUD_API = "https://script.google.com/macros/s/AKfycbyeVpecFwGjYNEqQC-hWrlBP1zQItUeraMKOwPpkfz6v-ZDcVOSbRU-zUt_pvXbccPH/exec";
-
-        async function finalizeOrder() {
-            const name = document.getElementById('cust-name').value;
-            const phone = document.getElementById('cust-phone')?.value || "N/A";
-            const address = document.getElementById('street-address').value;
-            const txn = document.getElementById('txn-id').value;
-            const total = document.getElementById('total-val').innerText;
-
-            if(!name || !txn) return alert("Please fill Name and Payment ID");
-
-            const payload = {
-                name: name,
-                phone: phone,
-                address: address,
-                items: "Items from Cart", 
-                total: total,
-                txnId: txn,
-                status: "PENDING"
-            };
-
-            // 1. Silent Sync to Google Sheet
-            fetch(CLOUD_API, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
-
-            alert("✅ Order Sent to Admin! Please wait for confirmation.");
-            // 2. Clear Cart or Redirect
-            location.reload();
-        }
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORDER NOW - MY RESTAURANT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: 'Poppins', sans-serif; background: #000; color: #fff; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: -1; }
+        .header { display: flex; align-items: center; padding: 15px; background: #111; border-bottom: 2px solid #f1c40f; }
+        .menu-container { padding: 15px; padding-bottom: 100px; }
+        .item-card { background: #222; margin-bottom: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .qty-box { display: flex; align-items: center; background: #f1c40f; color: #000; border-radius: 6px; }
+        .qty-btn { background: none; border: none; font-weight: bold; font-size: 20px; padding: 5px 10px; cursor: pointer; }
+        .footer { position: fixed; bottom: 0; width: 100%; background: #000; padding: 15px; border-top: 2px solid #f1c40f; box-sizing: border-box; }
+        .btn-order { background: #2ecc71; color: #fff; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        #form-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:1000; padding:20px; box-sizing:border-box; overflow-y:auto; }
+        .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; box-sizing: border-box; }
+    </style>
 </head>
 <body>
-    </body>
+
+<div class="header">
+    <div style="color:#f1c40f; font-weight: bold;">MY RESTAURANT | CUSTOMER</div>
+</div>
+
+<div id="menu-display" class="menu-container">
+    </div>
+
+<div id="form-overlay">
+    <h2 style="color:#f1c40f;">CHECKOUT</h2>
+    <input type="text" id="cust-name" class="input-field" placeholder="Full Name">
+    <input type="tel" id="cust-phone" class="input-field" placeholder="WhatsApp Number">
+    <input type="text" id="cust-address" class="input-field" placeholder="Full Address">
+    <input type="text" id="txn-id" class="input-field" placeholder="Payment Ref/Transaction ID">
+    <button class="btn-order" onclick="submitToSheet()">CONFIRM ORDER NOW</button>
+    <button onclick="document.getElementById('form-overlay').style.display='none'" class="input-field">CANCEL</button>
+</div>
+
+<div class="footer">
+    <button class="btn-order" onclick="document.getElementById('form-overlay').style.display='block'">PROCEED TO PAY ₹<span id="total-val">0</span></button>
+</div>
+
+<script>
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-2zZ3mIBhu1EKG6Y8zQJN2o3ob8Ow_3coVnosnNtGjBNBpsXPdoLOQmTEUvwcS7FP/exec';
+    let cart = {};
+
+    async function loadMenu() {
+        const res = await fetch(SHEET_URL);
+        const data = await res.text();
+        const rows = data.split('\n').slice(1);
+        let html = '';
+        rows.forEach(row => {
+            const cols = row.split('","').map(c => c.replace(/"/g, '').trim());
+            if(cols[0]) {
+                html += `<div class="item-card">
+                    <div><b>${cols[0]}</b><br>₹${cols[1]}</div>
+                    <div class="qty-box">
+                        <button class="qty-btn" onclick="updateQty('${cols[0]}', ${cols[1]}, -1)">-</button>
+                        <span id="q-${cols[0].replace(/\s/g,'')}">0</span>
+                        <button class="qty-btn" onclick="updateQty('${cols[0]}', ${cols[1]}, 1)">+</button>
+                    </div>
+                </div>`;
+            }
+        });
+        document.getElementById('menu-display').innerHTML = html;
+    }
+
+    function updateQty(name, price, d) {
+        if(!cart[name]) cart[name] = {qty:0, price:price};
+        cart[name].qty += d;
+        if(cart[name].qty < 0) cart[name].qty = 0;
+        document.getElementById('q-'+name.replace(/\s/g,'')).innerText = cart[name].qty;
+        let total = 0;
+        for(let k in cart) total += cart[k].qty * cart[k].price;
+        document.getElementById('total-val').innerText = total;
+    }
+
+    function submitToSheet() {
+        const name = document.getElementById('cust-name').value;
+        const phone = document.getElementById('cust-phone').value;
+        const addr = document.getElementById('cust-address').value;
+        const txn = document.getElementById('txn-id').value;
+        let items = "";
+        for(let k in cart) { if(cart[k].qty > 0) items += `${k}(${cart[k].qty}) `; }
+
+        if(!name || !phone || !txn) return alert("Please fill all details!");
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({name, phone, order:items, total:document.getElementById('total-val').innerText, address:addr, txn})
+        }).then(() => {
+            alert("ORDER SENT TO RESTAURANT!");
+            location.reload();
+        });
+    }
+    loadMenu();
+</script>
+</body>
 </html>
