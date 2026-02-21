@@ -2,64 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OWNER DASHBOARD - MANAGE ORDERS</title>
+    <title>OWNER DASHBOARD</title>
     <style>
         body { font-family: 'Poppins', sans-serif; background: #111; color: #fff; padding: 20px; }
-        .order-card { background: #222; border: 1px solid #f1c40f; padding: 15px; margin-bottom: 20px; border-radius: 10px; }
-        .btn-approve { background: #2ecc71; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
-        .btn-reject { background: #e74c3c; color: white; margin-top: 5px; }
+        .order-card { background: #222; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .btn-green { background: #2ecc71; color: white; }
+        .btn-red { background: #e74c3c; color: white; margin-top: 5px; }
         input { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #444; background: #000; color: #fff; box-sizing: border-box; }
-        .status { font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h2>RESTAURANT ADMIN - LIVE ORDERS</h2>
-    <div id="orders-list">Loading orders from Google Sheet...</div>
+    <h2 style="color:#f1c40f">LIVE ORDERS</h2>
+    <div id="orders-list">Fetching orders...</div>
 
 <script>
-    const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/1Mb0nfkDRt19dGJ37MgfyMmoLk9UCr_7TkcLywSsmffI/gviz/tq?tqx=out:csv';
+    // Sheet B (Jahan orders save hue hain)
+    const SHEET_B_CSV = 'https://docs.google.com/spreadsheets/d/1Mb0nfkDRt19dGJ37MgfyMmoLk9UCr_7TkcLywSsmffI/gviz/tq?tqx=out:csv';
 
-    async function loadAdminOrders() {
-        const res = await fetch(SHEET_CSV);
+    async function loadOrders() {
+        const res = await fetch(SHEET_B_CSV);
         const data = await res.text();
         const rows = data.split('\n').slice(1);
         let html = '';
         rows.forEach((row, i) => {
             const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             if(cols[1]) {
-                const name = cols[1].replace(/"/g, '');
-                const phone = cols[5].replace(/"/g, '');
-                const items = cols[2].replace(/"/g, '');
-                const total = cols[3].replace(/"/g, '');
-                const addr = cols[4].replace(/"/g, '');
-                const txn = cols[6].replace(/"/g, '');
-
                 html += `<div class="order-card">
-                    <div class="status">NEW ORDER #${i+1}</div>
-                    <b>Customer:</b> ${name} (${phone})<br>
-                    <b>Items:</b> ${items}<br>
-                    <b>Amount:</b> ₹${total} | <b>TXN:</b> ${txn}<br>
-                    <b>Address:</b> ${addr}<br>
-                    <input type="text" id="boy-${i}" placeholder="Delivery Boy Name & Number">
-                    <button class="btn-approve" onclick="sendWA('${phone}','${name}','${i}','Approved')">CONFIRM & SEND WHATSAPP</button>
-                    <button class="btn-approve btn-reject" onclick="sendWA('${phone}','${name}','${i}','Rejected')">REJECT ORDER</button>
+                    <b>Customer:</b> ${cols[1].replace(/"/g,'')}<br>
+                    <b>Items:</b> ${cols[2].replace(/"/g,'')}<br>
+                    <b>Total:</b> ₹${cols[3].replace(/"/g,'')} | <b>TXN:</b> ${cols[6].replace(/"/g,'')}<br>
+                    <b>Addr:</b> ${cols[4].replace(/"/g,'')}<br>
+                    <input type="text" id="boy-${i}" placeholder="Boy Name & Number">
+                    <button class="btn btn-green" onclick="sendWA('${cols[5].replace(/"/g,'')}','Approved','${i}')">APPROVE</button>
+                    <button class="btn btn-red" onclick="sendWA('${cols[5].replace(/"/g,'')}','Rejected','${i}')">REJECT</button>
                 </div>`;
             }
         });
-        document.getElementById('orders-list').innerHTML = html || "No orders found.";
+        document.getElementById('orders-list').innerHTML = html;
     }
 
-    function sendWA(phone, name, i, status) {
+    function sendWA(phone, status, i) {
         const boy = document.getElementById('boy-'+i).value;
-        let msg = "";
-        if(status === 'Approved') {
-            msg = `*ORDER CONFIRMED!* ✅%0AHi ${name}, your order is accepted.%0A🛵 *Delivery Boy:* ${boy}%0APlease be ready!`;
-        } else {
-            msg = `*ORDER REJECTED* ❌%0AHi ${name}, sorry we cannot deliver your order right now.`;
-        }
+        let msg = status === 'Approved' ? `Order Confirmed! 🛵 Delivery Boy: ${boy}` : `Order Rejected!`;
         window.open(`https://wa.me/91${phone}?text=${msg}`);
     }
-    loadAdminOrders();
+    loadOrders();
 </script>
 </body>
 </html>
