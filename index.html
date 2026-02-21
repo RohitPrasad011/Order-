@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CUSTOMER - ORDER ONLINE</title>
+    <title>VIP RESTAURANT - ORDER NOW</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; font-family: 'Poppins', sans-serif; background: #000; color: #fff; }
@@ -16,72 +16,88 @@
         .qty-box { display: flex; align-items: center; background: #f1c40f; color: #000; border-radius: 8px; }
         .qty-btn { background: none; border: none; font-weight: bold; font-size: 20px; padding: 5px 12px; cursor: pointer; }
         .footer { position: fixed; bottom: 0; width: 100%; background: #000; padding: 20px; border-top: 2px solid #f1c40f; box-sizing: border-box; }
-        .btn-order { background: #2ecc71; color: #fff; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-order { background: #2ecc71; color: #fff; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         #form-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:1000; padding:20px; box-sizing:border-box; overflow-y:auto; }
         .input-field { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; box-sizing: border-box; }
     </style>
 </head>
 <body>
-    <div class="header">VIP RESTAURANT | ORDER NOW</div>
-    <div id="menu-display" class="menu-container"></div>
+    <div class="header">VIP RESTAURANT | HOME DELIVERY</div>
+    <div id="menu-display" class="menu-container">⌛ Loading Menu Items...</div>
+
     <div id="form-overlay">
-        <h2 style="color:#f1c40f; text-align:center;">PAYMENT & DELIVERY</h2>
-        <input type="text" id="c-name" class="input-field" placeholder="Apka Naam">
+        <h2 style="color:#f1c40f; text-align:center;">DELIVERY DETAILS</h2>
+        <input type="text" id="c-name" class="input-field" placeholder="Full Name">
         <input type="tel" id="c-phone" class="input-field" placeholder="WhatsApp Number">
-        <input type="text" id="c-addr" class="input-field" placeholder="Pura Address">
-        <input type="text" id="c-txn" class="input-field" placeholder="Payment Reference ID">
+        <input type="text" id="c-addr" class="input-field" placeholder="Full Address">
+        <input type="text" id="c-txn" class="input-field" placeholder="Payment Ref ID / TXN ID">
         <button class="btn-order" onclick="submitOrder()">PLACE ORDER NOW</button>
-        <button onclick="document.getElementById('form-overlay').style.display='none'" class="input-field">CANCEL</button>
+        <button onclick="document.getElementById('form-overlay').style.display='none'" class="input-field">RETURN</button>
     </div>
+
     <div class="footer">
         <button class="btn-order" onclick="document.getElementById('form-overlay').style.display='block'">CHECKOUT: ₹<span id="total-price">0</span></button>
     </div>
 
 <script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv';
+    // 1. Menu Sheet (Jahan se khana load hoga)
+    const SHEET_MENU = 'https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv';
+    
+    // 2. Apps Script (Jahan order save hoga - Sheet B)
     const APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx-2zZ3mIBhu1EKG6Y8zQJN2o3ob8Ow_3coVnosnNtGjBNBpsXPdoLOQmTEUvwcS7FP/exec';
+    
+    let menu = [];
     let cart = {};
 
     async function loadMenu() {
-        const res = await fetch(SHEET_URL);
-        const data = await res.text();
-        const lines = data.split('\n').slice(1);
-        let html = '';
-        lines.forEach(line => {
-            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const name = cols[0]?.replace(/"/g, '').trim();
-            const price = parseInt(cols[1]?.replace(/"/g, '').trim()) || 0;
-            if(name) {
-                html += `<div class="item-card"><div class="item-info"><span class="item-name">${name}</span><span class="item-price">₹${price}</span></div>
-                <div class="qty-box"><button class="qty-btn" onclick="add('${name}',${price},-1)">-</button>
-                <span id="q-${name.replace(/\s/g,'')}">0</span><button class="qty-btn" onclick="add('${name}',${price},1)">+</button></div></div>`;
-            }
-        });
-        document.getElementById('menu-display').innerHTML = html;
+        try {
+            const res = await fetch(SHEET_MENU);
+            const text = await res.text();
+            const rows = text.split('\n').slice(1);
+            let html = '';
+            
+            menu = rows.map(row => {
+                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const name = cols[0]?.replace(/"/g, '').trim();
+                const price = parseInt(cols[1]?.replace(/"/g, '').trim()) || 0;
+                if(name) {
+                    html += `<div class="item-card"><div class="item-info"><span class="item-name">${name}</span><span class="item-price">₹${price}</span></div>
+                    <div class="qty-box"><button class="qty-btn" onclick="add('${name}',${price},-1)">-</button>
+                    <span id="q-${name.replace(/\s/g,'')}">0</span><button class="qty-btn" onclick="add('${name}',${price},1)">+</button></div></div>`;
+                    return { name, price };
+                }
+            }).filter(Boolean);
+            document.getElementById('menu-display').innerHTML = html;
+        } catch(e) { document.getElementById('menu-display').innerHTML = "Failed to load menu."; }
     }
 
     function add(name, p, v) {
-        if(!cart[name]) cart[name] = {q:0, p:p};
-        cart[name].q += v;
-        if(cart[name].q < 0) cart[name].q = 0;
-        document.getElementById('q-'+name.replace(/\s/g,'')).innerText = cart[name].q;
+        if(!cart[name]) cart[name] = 0;
+        cart[name] += v;
+        if(cart[name] < 0) cart[name] = 0;
+        document.getElementById('q-'+name.replace(/\s/g,'')).innerText = cart[name];
         let t = 0;
-        for(let x in cart) t += cart[x].q * cart[x].p;
+        menu.forEach(item => { if(cart[item.name]) t += cart[item.name] * item.price; });
         document.getElementById('total-price').innerText = t;
     }
 
     function submitOrder() {
+        let orderDetails = "";
+        for(let x in cart) { if(cart[x] > 0) orderDetails += `${x}(${cart[x]}) `; }
+        
         const payload = {
             name: document.getElementById('c-name').value,
             phone: document.getElementById('c-phone').value,
             address: document.getElementById('c-addr').value,
             txn: document.getElementById('c-txn').value,
             total: document.getElementById('total-price').innerText,
-            order: JSON.stringify(cart)
+            order: orderDetails
         };
-        if(!payload.name || !payload.phone || !payload.txn) return alert("Details bharo!");
+        
+        if(!payload.name || !payload.phone || !payload.txn) return alert("All fields are mandatory!");
+
         fetch(APPS_SCRIPT, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-        alert("Order Successful! Admin is checking.");
+        alert("Order Received! Please wait for confirmation.");
         location.reload();
     }
     loadMenu();
