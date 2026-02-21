@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RP SMART | ADMIN PANEL</title>
+    <style>
+        body { font-family: sans-serif; background: #000; color: #f1c40f; padding: 20px; }
+        .card { background: #111; border: 1px solid #f1c40f; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        input { width: 100%; padding: 8px; margin: 5px 0; background: #222; border: 1px solid #444; color: #fff; }
+        .btn { background: #27ae60; color: #fff; border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold; }
+        .btn-reject { background: #e74c3c; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h2>🚀 RP SMART ADMIN TERMINAL</h2>
+    <div id="orders-display">Fetching Orders...</div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbyeVpecFwGjYNEqQC-hWrlBP1zQItUeraMKOwPpkfz6v-ZDcVOSbRU-zUt_pvXbccPH/exec";
+
+        async function getOrders() {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            const container = document.getElementById('orders-display');
+            container.innerHTML = "";
+
+            data.slice(1).reverse().forEach((row, i) => {
+                if(row[7] === "PENDING") {
+                    container.innerHTML += `
+                    <div class="card">
+                        <p><b>Name:</b> ${row[1]} | <b>Total:</b> ₹${row[5]}</p>
+                        <p><b>Items:</b> ${row[4]}</p>
+                        <p><b>Txn ID:</b> ${row[6]}</p>
+                        <input type="text" id="boy-${i}" placeholder="Delivery Boy Name">
+                        <input type="text" id="contact-${i}" placeholder="Boy Contact Number">
+                        <button class="btn" onclick="process('${row[2]}', 'accept', ${i})">ACCEPT & WHATSAPP</button>
+                        <button class="btn btn-reject" onclick="process('${row[2]}', 'reject', ${i})">REJECT</button>
+                    </div>`;
+                }
+            });
+        }
+
+        function process(phone, type, idx) {
+            let msg = "";
+            if(type === 'accept') {
+                const boy = document.getElementById(`boy-${idx}`).value;
+                const contact = document.getElementById(`contact-${idx}`).value;
+                msg = `*Order Confirmed! ✅*%0AYour order is on the way.%0A🛵 *Boy:* ${boy}%0A📞 *Call:* ${contact}`;
+            } else {
+                msg = `*Order Rejected! ❌*%0ASorry, we cannot fulfill your order right now.`;
+            }
+            window.open(`https://wa.me/${phone}?text=${msg}`);
+        }
+
+        setInterval(getOrders, 10000);
+        getOrders();
+    </script>
+</body>
+</html>
