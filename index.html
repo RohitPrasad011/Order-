@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RP SMART | ORDER NOW</title>
+    <script>
+        const CLOUD_API = "https://script.google.com/macros/s/AKfycbyeVpecFwGjYNEqQC-hWrlBP1zQItUeraMKOwPpkfz6v-ZDcVOSbRU-zUt_pvXbccPH/exec";
+
+        async function finalizeOrder() {
+            const name = document.getElementById('cust-name').value;
+            const phone = document.getElementById('cust-phone')?.value || "N/A";
+            const address = document.getElementById('street-address').value;
+            const txn = document.getElementById('txn-id').value;
+            const total = document.getElementById('total-val').innerText;
+
+            if(!name || !txn) return alert("Please fill Name and Payment ID");
+
+            const payload = {
+                name: name,
+                phone: phone,
+                address: address,
+                items: "Items from Cart", 
+                total: total,
+                txnId: txn,
+                status: "PENDING"
+            };
+
+            // 1. Silent Sync to Google Sheet
+            fetch(CLOUD_API, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+
+            alert("✅ Order Sent to Admin! Please wait for confirmation.");
+            // 2. Clear Cart or Redirect
+            location.reload();
+        }
+    </script>
+</head>
+<body>
+    </body>
+</html>
