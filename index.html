@@ -3,66 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIP RESTO | Order Food</title>
+    <title>VIP RESTO | Order Now</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-white">
 
-    <div class="max-w-md mx-auto p-4">
-        <div class="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-            <h2 class="text-xl font-black mb-4">CHECKOUT</h2>
-            <div class="space-y-3">
-                <input id="custName" type="text" placeholder="Full Name" class="w-full p-3 bg-gray-50 rounded-xl border-none outline-none text-sm">
-                <input id="custPhone" type="number" placeholder="WhatsApp Number" class="w-full p-3 bg-gray-50 rounded-xl border-none outline-none text-sm">
-                <textarea id="custAddr" placeholder="Full Address" class="w-full p-3 bg-gray-50 rounded-xl border-none outline-none text-sm h-24"></textarea>
-            </div>
+    <div id="loadingBar" class="fixed top-0 left-0 w-0 h-1 bg-red-600 transition-all duration-500 z-[100]"></div>
 
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white font-bold py-4 rounded-2xl mt-6 shadow-xl shadow-red-100 active:scale-95 transition-all">
-                PLACE ORDER
-            </button>
-        </div>
-    </div>
+    <header class="p-6">
+        <h1 class="text-3xl font-black italic tracking-tighter">VIP <span class="text-red-600">RESTO</span></h1>
+        <p class="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Order your favorite food</p>
+    </header>
+
+    <main class="px-6 grid grid-cols-2 gap-4" id="menuDisplay">
+        </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxprlgeOXvjPYQvKzF9TVuBeohuKk8bVBC8rThIg6-txgTLGPWRCn50d-wKyCtbU4Uf/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-pNz_6HP34j97QQzUBPJrkwqB2zucq3M6y927LTNazuAapf9yE_IKat4oTfa6ApsB/exec";
 
-        async function placeOrder() {
-            const name = document.getElementById('custName').value;
-            const phone = document.getElementById('custPhone').value;
-            const address = document.getElementById('custAddr').value;
-            const btn = document.getElementById('orderBtn');
+        // FAST LOADING LOGIC
+        async function fetchMenu() {
+            const menuDisplay = document.getElementById('menuDisplay');
+            const cachedMenu = localStorage.getItem('vipMenu');
 
-            if(!name || !phone || !address) { alert("Please fill details!"); return; }
-
-            // Temporary Static Data (Aap apne cart logic se items yaha fetch kar lena)
-            const orderData = {
-                action: "addOrder",
-                name: name,
-                phone: phone,
-                address: address,
-                order: "1x Burger, 2x Pizza", // Example
-                total: "450", // Example
-                txn: "VIP" + Math.floor(Math.random() * 99999)
-            };
-
-            btn.disabled = true;
-            btn.innerText = "PLACING ORDER...";
+            // 1. Agar cache mein menu hai, toh pehle wahi dikhao (Fast Load)
+            if (cachedMenu) {
+                renderMenu(JSON.parse(cachedMenu));
+            }
 
             try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(orderData)
-                });
+                // 2. Background mein naya data fetch karo
+                document.getElementById('loadingBar').style.width = "50%";
+                const res = await fetch(SCRIPT_URL + "?action=getMenu", { redirect: 'follow' });
+                const freshMenu = await res.json();
                 
-                alert("Order Placed Successfully! Your ID: " + orderData.txn);
-                location.reload();
+                // 3. Naye data ko save karo aur update karo
+                localStorage.setItem('vipMenu', JSON.stringify(freshMenu));
+                renderMenu(freshMenu);
+                document.getElementById('loadingBar').style.width = "100%";
+                setTimeout(() => document.getElementById('loadingBar').style.width = "0%", 500);
             } catch (e) {
-                alert("Something went wrong!");
-                btn.disabled = false;
-                btn.innerText = "PLACE ORDER";
+                console.log("Menu Fetch Error");
             }
         }
+
+        function renderMenu(items) {
+            const menuDisplay = document.getElementById('menuDisplay');
+            menuDisplay.innerHTML = items.map(item => `
+                <div class="bg-gray-50 rounded-3xl p-3 border border-gray-100">
+                    <img src="${item.img}" class="w-full h-32 object-cover rounded-2xl mb-3 shadow-sm">
+                    <h3 class="font-bold text-sm text-gray-800">${item.name}</h3>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="font-black text-red-600">₹${item.price}</span>
+                        <button class="bg-white p-2 rounded-xl shadow-sm border border-gray-100 text-xs font-bold active:scale-90 transition">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.onload = fetchMenu;
     </script>
 </body>
 </html>
