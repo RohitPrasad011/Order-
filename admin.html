@@ -3,37 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merchant Dashboard | Order Management</title>
+    <title>VIP RESTO | Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .order-card { border-radius: 12px; transition: transform 0.2s; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .order-card { transition: all 0.3s ease; }
         .order-card:hover { transform: translateY(-2px); }
-        .btn-accept { background-color: #10b981; }
-        .btn-reject { background-color: #ef4444; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="min-h-screen pb-10">
 
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-8 border-b pb-4">
-            <div>
-                <h1 class="text-2xl font-extrabold text-slate-900">Live Orders</h1>
-                <p class="text-slate-500 text-sm">Monitor and manage incoming requests in real-time</p>
-            </div>
-            <div class="text-right">
-                <span id="orderCount" class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">0 NEW</span>
-            </div>
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-extrabold text-slate-800 tracking-tight">VIP <span class="text-red-600">ADMIN</span></h1>
+            <button onclick="fetchOrders()" class="bg-slate-100 p-2 rounded-lg text-slate-600 hover:bg-slate-200 transition">
+                <i class="fa fa-sync-alt"></i>
+            </button>
         </div>
+    </header>
+
+    <main class="max-w-xl mx-auto px-4 mt-6">
+        <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Live Orders</h2>
         
-        <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <p class="text-slate-400 italic">Connecting to secure server...</p>
+        <div id="orderList" class="space-y-4">
+            <div class="text-center py-20 text-slate-400">
+                <i class="fa fa-circle-notch fa-spin text-3xl mb-3"></i>
+                <p>Syncing with Sheet...</p>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7YGOpB62IT3NTsFPvmiZVZ7aVGPpyKY5ufIGOzdte_eR6E7HpU__nt2NHjPFOZXoq/exec";
+        // PASTE YOUR APPS SCRIPT URL HERE
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwo-mCRLZUFLcpMvDqvyXXUktaqs4WEtHuGvwylTWgqS9BwnRWxsCzrRS7XhpnDiEyc/exec";
 
         async function fetchOrders() {
             try {
@@ -41,83 +45,102 @@
                 const orders = await response.json();
                 renderOrders(orders);
             } catch (error) {
-                console.error("Connection Error:", error);
-                document.getElementById('ordersContainer').innerHTML = `<div class="text-red-500">Sync Error. Please refresh.</div>`;
+                document.getElementById('orderList').innerHTML = `
+                    <div class="bg-red-50 text-red-600 p-4 rounded-xl text-center text-sm font-medium">
+                        Error syncing data. Check Script URL.
+                    </div>`;
             }
         }
 
         function renderOrders(orders) {
-            const container = document.getElementById('ordersContainer');
-            const pendingOrders = orders.filter(o => o.status === "Pending").reverse();
-            document.getElementById('orderCount').innerText = `${pendingOrders.length} NEW`;
-            
-            if (pendingOrders.length === 0) {
-                container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400">No active orders at the moment.</div>`;
+            const container = document.getElementById('orderList');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400">No orders found.</div>`;
                 return;
             }
 
-            container.innerHTML = pendingOrders.map(order => `
-                <div class="order-card bg-white p-6 shadow-sm border border-slate-200">
+            container.innerHTML = orders.reverse().map(order => `
+                <div class="order-card bg-white rounded-2xl p-5 shadow-sm border border-slate-200 relative overflow-hidden">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <span class="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Transaction ID</span>
-                            <p class="text-xs font-mono text-slate-600">${order.txn}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">${order.time}</p>
+                            <h3 class="text-lg font-extrabold text-slate-800">${order.name}</h3>
                         </div>
-                        <span class="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-1 rounded">PENDING</span>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide 
+                            ${order.status === 'Pending' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}">
+                            ${order.status}
+                        </span>
                     </div>
 
-                    <div class="mb-4">
-                        <h3 class="text-lg font-bold text-slate-800">${order.name}</h3>
-                        <p class="text-sm text-slate-500"><i class="fa fa-phone mr-1"></i> ${order.phone}</p>
+                    <div class="bg-slate-50 rounded-xl p-3 mb-4">
+                        <p class="text-sm text-slate-700 font-semibold italic">"${order.items}"</p>
                     </div>
 
-                    <div class="bg-slate-50 p-3 rounded-lg mb-4">
-                        <p class="text-xs font-semibold text-slate-400 uppercase mb-1">Order Details</p>
-                        <p class="text-sm text-slate-700 font-medium">${order.items}</p>
-                        <div class="mt-2 pt-2 border-t border-slate-200 flex justify-between">
-                            <span class="text-sm font-bold text-slate-800">Total Amount</span>
-                            <span class="text-sm font-bold text-green-600">₹${order.total}</span>
+                    <div class="space-y-2 mb-6">
+                        <div class="flex items-center text-xs text-slate-500">
+                            <i class="fa fa-map-marker-alt w-5 text-red-400"></i>
+                            <span class="flex-1">${order.address}</span>
+                        </div>
+                        <div class="flex items-center text-xs text-slate-500">
+                            <i class="fa fa-phone w-5 text-green-400"></i>
+                            <span>${order.phone}</span>
+                        </div>
+                        <div class="flex items-center text-sm font-black text-slate-800">
+                            <i class="fa fa-wallet w-5 text-blue-500"></i>
+                            <span>₹${order.total}</span>
                         </div>
                     </div>
 
-                    <div class="text-xs text-slate-500 mb-6">
-                        <i class="fa fa-map-marker-alt mr-1"></i> ${order.address}
-                    </div>
-                    
-                    <div class="flex gap-3">
-                        <button onclick="updateStatus('${order.txn}', 'Confirmed', '${order.phone}')" class="btn-accept flex-1 text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-green-100 transition hover:bg-green-700">CONFIRM</button>
-                        <button onclick="updateStatus('${order.txn}', 'Cancelled', '${order.phone}')" class="btn-reject flex-1 text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-100 transition hover:bg-red-700">CANCEL</button>
-                    </div>
+                    ${order.status === 'Pending' ? `
+                        <button onclick="assignAndWhatsApp('${order.txn}', '${order.phone}', '${order.name}')" 
+                            class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition">
+                            Assign & Notify WhatsApp
+                        </button>
+                    ` : `
+                        <div class="pt-3 border-t border-slate-100">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Assigned Delivery Boy</p>
+                            <p class="text-xs font-bold text-slate-700">${order.deliveryName} (${order.deliveryPhone})</p>
+                        </div>
+                    `}
                 </div>
             `).join('');
         }
 
-        async function updateStatus(txnId, newStatus, phone) {
-            const btn = event.target;
-            btn.innerHTML = `<i class="fa fa-spinner fa-spin"></i> Processing...`;
-            btn.disabled = true;
+        async function assignAndWhatsApp(txn, custPhone, custName) {
+            const dName = prompt("Enter Delivery Boy Name:");
+            if (!dName) return;
+            const dPhone = prompt("Enter Delivery Boy Phone Number:");
+            if (!dPhone) return;
 
+            // 1. Send data to Sheet
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    body: JSON.stringify({ action: "updateStatus", txn: txnId, status: newStatus })
+                    body: JSON.stringify({
+                        action: "assignDelivery",
+                        txn: txn,
+                        dName: dName,
+                        dPhone: dPhone
+                    })
                 });
 
-                const message = newStatus === 'Confirmed' 
-                    ? `Order Confirmed! Your delicious meal from VIP Restaurant is being prepared.` 
-                    : `Order Update: We regret to inform you that your order has been cancelled.`;
-
-                window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
-                fetchOrders(); 
-            } catch (error) {
-                alert("Operation failed. Check connection.");
+                // 2. Prepare WhatsApp Message
+                const message = `Hello ${custName}! %0A%0AYour order (ID: ${txn}) from VIP RESTO is Out for Delivery! %0A%0ADelivery Boy: ${dName}%0APhone: ${dPhone}%0A%0AEnjoy your meal!`;
+                
+                // 3. Open WhatsApp
+                window.open(`https://wa.me/91${custPhone}?text=${message}`, '_blank');
+                
+                alert("Assigned Successfully!");
+                fetchOrders(); // Refresh UI
+            } catch (e) {
+                alert("Failed to update status.");
             }
         }
 
-        // Auto-refresh every 30 seconds
-        setInterval(fetchOrders, 30000);
-        fetchOrders();
+        // Auto refresh every 60 seconds
+        setInterval(fetchOrders, 60000);
+        window.onload = fetchOrders;
     </script>
 </body>
 </html>
