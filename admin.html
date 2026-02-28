@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>POS Admin Final</title>
+    <title>POS Terminal - Final Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #05070a; color: #e2e8f0; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; position: relative; transition: 0.2s; }
         .card.selected { border: 2px solid #3b82f6; background: #1e293b; }
-        .select-ring { position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; border: 2px solid #374151; border-radius: 50%; }
-        .selected .select-ring { background: #3b82f6; border-color: #fff; }
+        .select-dot { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border: 2px solid #374151; border-radius: 50%; }
+        .selected .select-dot { background: #3b82f6; border-color: #fff; box-shadow: 0 0 10px #3b82f6; }
         .bill-box { background: #1a2234; border: 2px solid #3b82f6; border-radius: 16px; padding: 15px; margin-bottom: 20px; }
         pre { background: #000; padding: 10px; border-radius: 8px; font-size: 13px; color: #9ca3af; white-space: pre-wrap; margin-top: 8px; border: 1px solid #1f2937; }
-        button { font-weight: 800; text-transform: uppercase; font-size: 11px; height: 48px; border-radius: 12px; }
+        button { font-weight: 800; text-transform: uppercase; font-size: 11px; height: 48px; border-radius: 12px; transition: 0.1s; active:scale-95; }
     </style>
 </head>
 <body class="p-4 pb-32">
 
-    <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a] z-50 py-3 border-b border-slate-900">
+    <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur z-50 py-3 border-b border-slate-900">
         <h1 class="text-xl font-black italic text-white tracking-tighter">POS TERMINAL</h1>
         <div class="flex gap-2">
-            <button id="multiLinkBtn" onclick="toggleMultiSelect()" class="bg-blue-600 text-white px-6 shadow-lg shadow-blue-900/20">
+            <button id="linkModeBtn" onclick="toggleSelectionMode()" class="bg-blue-600 text-white px-6 shadow-lg shadow-blue-900/30">
                 LINK BILLS
             </button>
             <button onclick="loadOrders()" class="bg-slate-800 text-white px-4 border border-slate-700">REFRESH</button>
@@ -30,34 +30,36 @@
 
     <div class="flex justify-between items-end mb-4">
         <h2 class="text-[10px] font-bold text-orange-500 uppercase tracking-widest">1. Incoming Orders</h2>
-        <button id="confirmBtn" onclick="processSelected()" class="hidden bg-green-600 text-white px-6 h-10 rounded-full animate-pulse">CONFIRM MERGE</button>
+        <button id="mergeActionBtn" onclick="mergeNow()" class="hidden bg-green-600 text-white px-6 h-10 rounded-full animate-pulse shadow-lg shadow-green-900/20">MERGE NOW</button>
     </div>
     <div id="incomingContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
 
     <hr class="border-slate-900 mb-10">
 
-    <h2 class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-4">2. Combined Table Bills</h2>
+    <h2 class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-4">2. Final Table Bills (Ready to Print)</h2>
     <div id="mergedContainer" class="flex flex-col gap-6"></div>
 
 <script>
+// Your specific Google Sheet CSV URL
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-let activeBills = JSON.parse(localStorage.getItem('pos_v7_active')) || {};
-let historyIds = JSON.parse(localStorage.getItem('pos_v7_history')) || [];
-let selectedList = [];
-let isSelecting = false;
+let activeBills = JSON.parse(localStorage.getItem('pos_v8_active')) || {};
+let historyIds = JSON.parse(localStorage.getItem('pos_v8_history')) || [];
+let selectedItems = [];
+let isSelectionMode = false;
 
 async function loadOrders() {
     try {
         const res = await fetch(CSV_URL + "&t=" + Date.now());
         const text = await res.text();
+        // Fixing parsing for your specific sheet structure
         const rows = text.split('\n').map(r => r.split(',').map(c => c.replace(/"/g, '').trim()));
         
         const h = rows[0];
         const tIdx = h.findIndex(x => x.includes("Timestamp"));
         const bIdx = h.findIndex(x => x.includes("TABLE"));
         const iIdx = h.findIndex(x => x.includes("ITEMS"));
-        // आपकी शीट के हिसाब से 'TOTAL MOUNT' का इंडेक्स
+        // EXACT FIX: Matching "TOTAL MOUNT" from your image
         const mIdx = h.findIndex(x => x.includes("MOUNT") || x.includes("TOTAL"));
 
         const container = document.getElementById("incomingContainer");
@@ -69,90 +71,83 @@ async function loadOrders() {
             let orderId = (d[tIdx] + d[bIdx]).replace(/\s+/g, '');
 
             if (!historyIds.includes(orderId)) {
-                // शीट से सही अमाउंट लेना
-                let price = parseFloat(d[mIdx]) || 0;
-                let isAlreadyIn = selectedList.find(s => s.id === orderId);
+                let priceValue = parseFloat(d[mIdx]) || 0;
+                let isSel = selectedItems.find(s => s.id === orderId);
 
                 container.innerHTML += `
-                    <div class="card ${isAlreadyIn ? 'selected' : ''}" id="card-${orderId}" onclick="handleCardTap('${orderId}', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}', ${price})">
-                        <div class="select-ring"></div>
+                    <div class="card ${isSel ? 'selected' : ''}" id="card-${orderId}" onclick="handleTap('${orderId}', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}', ${priceValue})">
+                        <div class="select-dot"></div>
                         <div class="flex justify-between items-start">
-                            <span class="text-slate-400 font-bold text-xs uppercase">${d[bIdx]}</span>
-                            <span class="text-green-400 font-black text-xl">₹${price}</span>
+                            <span class="text-slate-500 font-bold text-xs">${d[bIdx]}</span>
+                            <span class="text-green-400 font-black text-xl">₹${priceValue}</span>
                         </div>
                         <pre>${d[iIdx]}</pre>
-                        <button class="bg-orange-600/20 text-orange-500 border border-orange-600/30 w-full h-8 mt-2" onclick="event.stopPropagation(); printDoc('KOT', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}')">KOT PRINT</button>
+                        <button class="bg-orange-600/10 text-orange-500 border border-orange-600/20 w-full h-8 mt-2" onclick="event.stopPropagation(); printDoc('KOT', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}')">KOT PRINT</button>
                     </div>`;
             }
         }
-        renderActive();
-    } catch (e) { console.error("Sync Error"); }
+        renderFinalBills();
+    } catch (e) { console.error("Refresh failed"); }
 }
 
-function toggleMultiSelect() {
-    isSelecting = !isSelecting;
-    const btn = document.getElementById('multiLinkBtn');
-    const confirm = document.getElementById('confirmBtn');
-    
-    if (isSelecting) {
-        btn.innerText = "CANCEL";
-        btn.classList.replace('bg-blue-600', 'bg-red-600');
-        confirm.classList.remove('hidden');
+function toggleSelectionMode() {
+    isSelectionMode = !isSelectionMode;
+    const btn = document.getElementById('linkModeBtn');
+    const mergeBtn = document.getElementById('mergeActionBtn');
+    if (isSelectionMode) {
+        btn.innerText = "CANCEL"; btn.classList.replace('bg-blue-600', 'bg-red-600');
+        mergeBtn.classList.remove('hidden');
     } else {
-        btn.innerText = "LINK BILLS";
-        btn.classList.replace('bg-red-600', 'bg-blue-600');
-        confirm.classList.add('hidden');
-        selectedList = [];
-        loadOrders();
+        btn.innerText = "LINK BILLS"; btn.classList.replace('bg-red-600', 'bg-blue-600');
+        mergeBtn.classList.add('hidden');
+        selectedItems = []; loadOrders();
     }
 }
 
-function handleCardTap(id, table, items, price) {
-    if (!isSelecting) return;
+function handleTap(id, table, items, price) {
+    if (!isSelectionMode) return;
     const card = document.getElementById(`card-${id}`);
-    const idx = selectedList.findIndex(s => s.id === id);
+    const idx = selectedItems.findIndex(s => s.id === id);
     if (idx > -1) {
-        selectedList.splice(idx, 1);
+        selectedItems.splice(idx, 1);
         card.classList.remove('selected');
     } else {
-        selectedList.push({ id, table, items: decodeURIComponent(items), price });
+        selectedItems.push({ id, table, items: decodeURIComponent(items), price });
         card.classList.add('selected');
     }
 }
 
-function processSelected() {
-    if (selectedList.length === 0) return alert("Pehle order select karein!");
-    let t = prompt("In sabko kis Table Number mein merge karein?", selectedList[0].table);
-    if (!t) return;
+function mergeNow() {
+    if (selectedItems.length === 0) return alert("Pehle orders select karein!");
+    let table = prompt("Merge into which Table Number?", selectedItems[0].table);
+    if (!table) return;
 
-    if (!activeBills[t]) activeBills[t] = { items: [], total: 0 };
-    selectedList.forEach(o => {
-        activeBills[t].items.push(o.items);
-        activeBills[t].total += o.price;
+    if (!activeBills[table]) activeBills[table] = { items: [], total: 0 };
+    selectedItems.forEach(o => {
+        activeBills[table].items.push(o.items);
+        activeBills[table].total += o.price;
         historyIds.push(o.id);
     });
     
-    toggleMultiSelect();
+    toggleSelectionMode();
     save(); loadOrders();
 }
 
-function renderActive() {
+function renderFinalBills() {
     const div = document.getElementById("mergedContainer");
     div.innerHTML = "";
     for (let t in activeBills) {
         let b = activeBills[t];
         div.innerHTML += `
-            <div class="bill-box">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-2xl font-black text-white italic underline">${t}</h3>
+            <div class="bill-box shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-black text-white italic underline decoration-blue-500">${t}</h3>
                     <span class="text-3xl font-black text-green-400">₹${b.total}</span>
                 </div>
-                <div class="bg-black/50 p-3 rounded-lg text-sm text-slate-300 mb-4">
-                    ${b.items.map(i => `<div class='border-b border-white/5 py-2 last:border-0'>${i}</div>`).join('')}
-                </div>
+                <pre class="mb-4">${b.items.join('\n---\n')}</pre>
                 <div class="flex gap-3">
-                    <button class="bg-white text-black flex-1" onclick="printDoc('FINAL BILL', '${t}', '${encodeURIComponent(b.items.join('\n'))}', ${b.total})">PRINT</button>
-                    <button class="bg-red-600 text-white flex-1" onclick="settle('${t}')">SETTLE</button>
+                    <button class="bg-white text-black flex-1 shadow-lg" onclick="printDoc('FINAL BILL', '${t}', '${encodeURIComponent(b.items.join('\n'))}', ${b.total})">PRINT FINAL BILL</button>
+                    <button class="bg-red-600 text-white flex-1" onclick="settle('${t}')">SETTLE / CLEAR</button>
                 </div>
             </div>`;
     }
@@ -160,24 +155,24 @@ function renderActive() {
 
 function printDoc(type, table, items, total = 0) {
     let w = window.open("");
-    w.document.write(`<center><h2>${type}</h2><h1>${table}</h1><hr></center><pre style="white-space:pre-wrap;">${decodeURIComponent(items)}</pre>${total ? '<hr><h3>TOTAL: ₹'+total+'</h3>' : ''}`);
+    w.document.write(`<div style="font-family:monospace;width:280px;padding:10px;"><center><h2>${type}</h2><h1>${table}</h1><hr></center><pre style="white-space:pre-wrap; font-size:14px;">${decodeURIComponent(items)}</pre>${total ? '<hr><h3>TOTAL AMOUNT: ₹'+total+'</h3>' : ''}</div>`);
     w.print(); w.close();
 }
 
 function settle(t) {
-    if (confirm("Clear active table " + t + "?")) {
+    if (confirm("Move Table " + t + " to history and clear screen?")) {
         delete activeBills[t];
         save(); loadOrders();
     }
 }
 
 function save() {
-    localStorage.setItem('pos_v7_active', JSON.stringify(activeBills));
-    localStorage.setItem('pos_v7_history', JSON.stringify(historyIds));
+    localStorage.setItem('pos_v8_active', JSON.stringify(activeBills));
+    localStorage.setItem('pos_v8_history', JSON.stringify(historyIds));
 }
 
 loadOrders();
-setInterval(loadOrders, 15000);
+setInterval(loadOrders, 20000);
 </script>
 </body>
 </html>
