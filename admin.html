@@ -2,155 +2,137 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Restaurant Admin</title>
+<title>Admin Panel</title>
 <style>
-body{background:#000;color:#fff;font-family:Arial,sans-serif;padding:15px;}
-button{padding:8px 14px;margin:4px;border:none;border-radius:6px;cursor:pointer;}
-.kot{background:#f4b400;color:#000;}
-.bill{background:#0f9d58;color:#fff;}
-.paid{background:#d93025;color:#fff;}
-.manual{background:#4285f4;color:#fff;}
-.card{border:1px solid #444;padding:12px;margin:10px 0;border-radius:8px;}
+body{background:#111;color:#fff;font-family:Arial;padding:15px}
+button{padding:6px 12px;margin:4px;border:none;border-radius:6px;cursor:pointer}
+.card{border:1px solid #444;padding:10px;margin:10px 0;border-radius:8px}
+.kot{background:#f4b400}
+.bill{background:#0f9d58;color:#fff}
+.paid{background:#d93025;color:#fff}
 </style>
 </head>
 <body>
 
 <h1>ADMIN PANEL</h1>
-<button onclick="loadOrders()">Refresh Orders</button>
-<button class="manual" onclick="manualOrder()">Manual Order</button>
+<button onclick="loadOrders()">Refresh</button>
 
 <h2>Active Orders</h2>
-<div id="active"></div>
-
-<h2>Completed This Session</h2>
-<div id="history"></div>
+<div id="orders"></div>
 
 <script>
 
-// ===== ADMIN LOGIN =====
 const ADMIN_ID="Rohitprasa";
 const ADMIN_PASS="00000000";
-if(!sessionStorage.getItem("logged")){
-  const id=prompt("Admin ID:");
-  const pw=prompt("Admin Password:");
-  if(id!==ADMIN_ID||pw!==ADMIN_PASS){
-    document.body.innerHTML="<h1 style='color:red;'>Access Denied</h1>";
-    throw new Error("Denied");
-  }
-  sessionStorage.setItem("logged","true");
+
+if(!sessionStorage.getItem("login")){
+ let id=prompt("Admin ID:");
+ let pw=prompt("Password:");
+ if(id!==ADMIN_ID||pw!==ADMIN_PASS){
+   document.body.innerHTML="<h2>Access Denied</h2>";
+   throw new Error("Stop");
+ }
+ sessionStorage.setItem("login","true");
 }
 
-// ===== GOOGLE SHEET CSV LINK =====
-const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-let activeOrders = {};
-let sessionHistory = [];
+let activeOrders={};
 
-// ===== PARSE CSV =====
-function parseCSVLine(str) {
-  const arr = [];
-  let cur = "", inside = false;
-  for(let i=0;i<str.length;i++){
-    const ch=str[i];
-    if(ch=='"'){ inside=!inside; continue; }
-    if(ch==','&&!inside){ arr.push(cur); cur=""; continue; }
-    cur+=ch;
-  }
-  arr.push(cur);
-  return arr;
+function parseCSV(text){
+ let rows=[];
+ let row=[];
+ let cell="";
+ let inside=false;
+
+ for(let i=0;i<text.length;i++){
+   let char=text[i];
+   let next=text[i+1];
+
+   if(char=='"' && inside && next=='"'){
+     cell+='"';
+     i++;
+   }
+   else if(char=='"'){
+     inside=!inside;
+   }
+   else if(char==',' && !inside){
+     row.push(cell);
+     cell="";
+   }
+   else if((char=='\n' || char=='\r') && !inside){
+     if(cell||row.length){
+       row.push(cell);
+       rows.push(row);
+       row=[];
+       cell="";
+     }
+   }
+   else{
+     cell+=char;
+   }
+ }
+ return rows;
 }
 
-// ===== LOAD ORDERS =====
 async function loadOrders(){
-  activeOrders={};
-  const res=await fetch(SHEET_CSV+"&t="+Date.now());
-  const txt=await res.text();
-  const lines=txt.split("\n").filter(l=>l.trim());
-  const headers=parseCSVLine(lines[0]);
+ activeOrders={};
+ const res=await fetch(CSV_URL+"&t="+Date.now());
+ const text=await res.text();
+ const data=parseCSV(text);
 
-  for(let i=1;i<lines.length;i++){
-    const row=parseCSVLine(lines[i]);
-    if(row.length < headers.length) continue;
+ for(let i=1;i<data.length;i++){
+   let table=data[i][1];
+   let items=data[i][2];
+   let total=parseFloat(data[i][3])||0;
 
-    const table=row[1].trim();
-    const items=row[2].trim();
-    const total=parseFloat(row[3])||0;
+   if(!table) continue;
 
-    if(!activeOrders[table]) activeOrders[table]={items:[],total:0};
-    activeOrders[table].items.push(items);
-    activeOrders[table].total+=total;
-  }
-  renderOrders();
+   if(!activeOrders[table]){
+     activeOrders[table]={items:[],total:0};
+   }
+   activeOrders[table].items.push(items);
+   activeOrders[table].total+=total;
+ }
+
+ render();
 }
 
-// ===== RENDER =====
-function renderOrders(){
-  document.getElementById("active").innerHTML="";
-  for(let t in activeOrders){
-    const bill=activeOrders[t];
-    document.getElementById("active").innerHTML += `
-      <div class="card">
-        <h3>Table: ${t}</h3>
-        <p>Total: ₹${bill.total}</p>
-        <button class="kot" onclick="printKOT('${t}')">Print KOT</button>
-        <button class="bill" onclick="printBill('${t}')">Print Bill</button>
-        <button class="paid" onclick="markPaid('${t}')">Mark Paid</button>
-      </div>
-    `;
-  }
-  renderHistory();
+function render(){
+ let container=document.getElementById("orders");
+ container.innerHTML="";
+
+ for(let t in activeOrders){
+   let o=activeOrders[t];
+   container.innerHTML+=`
+     <div class="card">
+       <h3>Table: ${t}</h3>
+       <pre>${o.items.join("\n\n")}</pre>
+       <h4>Total: ₹${o.total}</h4>
+       <button class="kot" onclick="printKOT('${t}')">Print KOT</button>
+       <button class="bill" onclick="printBill('${t}')">Print Bill</button>
+     </div>
+   `;
+ }
 }
 
-// ===== PRINT KOT =====
-function printKOT(table){
-  const bill=activeOrders[table];
-  const w=window.open("");
-  w.document.write(`<h2>KOT - Table ${table}</h2><hr>${bill.items.join("<br>")}`);
-  w.print();
+function printKOT(t){
+ let o=activeOrders[t];
+ let w=window.open("");
+ w.document.write("<h2>KOT</h2><pre>"+o.items.join("\n")+"</pre>");
+ w.print();
 }
 
-// ===== PRINT BILL =====
-function printBill(table){
-  const bill=activeOrders[table];
-  const w=window.open("");
-  w.document.write(`<h2>Final Bill</h2><hr>Table: ${table}<hr>${bill.items.join("<br>")}<hr><h3>Total: ₹${bill.total}</h3>`);
-  w.print();
-  markPaid(table);
+function printBill(t){
+ let o=activeOrders[t];
+ let w=window.open("");
+ w.document.write("<h2>FINAL BILL</h2><hr>Table: "+t+
+ "<pre>"+o.items.join("\n")+"</pre><hr><h3>Total: ₹"+o.total+"</h3>");
+ w.print();
 }
 
-// ===== MARK PAID =====
-function markPaid(table){
-  sessionHistory.push({...activeOrders[table],table});
-  delete activeOrders[table];
-  renderOrders();
-}
-
-// ===== MANUAL ORDER =====
-function manualOrder(){
-  const t=prompt("Table No:");
-  const i=prompt("Items (comma separated):");
-  const p=parseFloat(prompt("Total ₹:"))||0;
-  if(!t) return;
-
-  if(!activeOrders[t]) activeOrders[t]={items:[],total:0};
-  activeOrders[t].items.push(i);
-  activeOrders[t].total+=p;
-  renderOrders();
-}
-
-// ===== SESSION HISTORY =====
-function renderHistory(){
-  document.getElementById("history").innerHTML="";
-  sessionHistory.forEach(o=>{
-    document.getElementById("history").innerHTML += 
-      `<div class="card">Table ${o.table} | ₹${o.total}</div>`;
-  });
-}
-
-// Load on start
 loadOrders();
 
 </script>
-
 </body>
 </html>
