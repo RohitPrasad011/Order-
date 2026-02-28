@@ -3,34 +3,36 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Royal Food POS — Merge & Print Fix</title>
+<title>Royal Food POS — Re-print Enabled</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-/* --- UI Style --- */
+/* --- App UI --- */
 body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
-.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); transition: 0.3s; position: relative; }
-.selected-card { border-color: #3b82f6 !important; background: #1e293b !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); transform: scale(1.02); }
-.history-card { background:#0f172a; opacity:.4; filter: grayscale(0.8); }
+.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; transition: 0.3s; position: relative; }
+.selected-card { border-color: #3b82f6 !important; background: #1e293b !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+/* हिस्ट्री कार्ड को थोड़ा हल्का रखा है पर बटन्स चालू हैं */
+.history-card { border-color: #111827; background: #0f172a; opacity: 0.85; }
 
-button { font-weight:700; font-size:14px; height:48px; border-radius:12px; cursor:pointer; }
+button { font-weight:700; font-size:13px; height:44px; border-radius:10px; cursor:pointer; transition: 0.2s; }
+button:active { transform: scale(0.95); }
 .btn-kot { background:#ea580c; color:#fff; border-bottom:3px solid #9a3412; }
 .btn-bill { background:#3b82f6; color:#fff; border-bottom:3px solid #1d4ed8; }
-.btn-merge-action { background:#10b981; color:#fff; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: none; }
+.btn-merge-action { background:#10b981; color:#fff; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; display: none; height: 55px; font-size: 16px; }
 
-pre { background:#000; padding:10px; border-radius:10px; font-size:15px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; line-height:1.4; }
+pre { background:#000; padding:10px; border-radius:10px; font-size:14px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; line-height:1.4; pointer-events: none; }
 
-/* 🔥 PRINT FIX: ONLY ONE PAGE 🔥 */
+/* 🔥 PRINT ENGINE: 1-PAGE FORCE 🔥 */
 @media print {
     @page { margin: 0; size: auto; }
-    html, body { height: auto; overflow: hidden; background: white !important; }
+    html, body { height: auto !important; overflow: hidden !important; background: white !important; }
     body * { display: none !important; }
     #printSection, #printSection * { display: block !important; visibility: visible !important; }
     #printSection { 
-        position: absolute; left: 0; top: 0; width: 100%; 
-        background: white !important; color: black !important; padding: 10px; 
+        position: absolute; left: 0; top: 0; width: 100% !important; 
+        padding: 5mm !important; background: white !important; color: black !important;
     }
-    .print-line { border-top: 1px dashed black !important; margin: 8px 0; }
+    .print-line { border-top: 1px dashed black !important; margin: 6px 0; width: 100%; }
 }
 #printSection { display: none; }
 </style>
@@ -39,19 +41,20 @@ pre { background:#000; padding:10px; border-radius:10px; font-size:15px; white-s
 <body class="p-4 pb-32">
 
 <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur py-3 z-50 border-b border-gray-800">
-  <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">Royal Food <span class="text-orange-500 font-bold text-2xl">POS</span></h1>
+  <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">Royal Food <span class="text-orange-500 font-bold">POS</span></h1>
   <div class="flex gap-2">
-    <button onclick="toggleMergeMode()" id="mergeBtnToggle" class="bg-gray-700 text-[10px] px-3 h-9 rounded-lg border border-gray-600 uppercase tracking-widest">Merge</button>
-    <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-3 h-9 rounded-lg border border-gray-700 uppercase tracking-widest text-orange-400 italic">Refresh</button>
+    <button onclick="toggleMergeMode()" id="mergeBtnToggle" class="bg-gray-700 text-[10px] px-3 h-9 rounded-lg border border-gray-600 uppercase">Merge</button>
+    <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-3 h-9 rounded-lg border border-gray-700 uppercase text-orange-400">Refresh</button>
   </div>
 </header>
 
-<main>
-  <div id="orderList"></div>
-  <hr class="my-8 border-gray-800">
-  <h2 class="text-[11px] text-gray-500 font-bold uppercase mb-4 tracking-widest">History (Today)</h2>
-  <div id="historyList"></div>
-</main>
+<div id="orderList"></div>
+<div id="historyHeader" class="my-6 flex items-center gap-3">
+    <hr class="flex-1 border-gray-800">
+    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">History (Today)</span>
+    <hr class="flex-1 border-gray-800">
+</div>
+<div id="historyList"></div>
 
 <button onclick="printMergedBill()" id="mergeActionButton" class="btn-merge-action font-black italic uppercase">
     Print Merged Bill (₹<span id="mergeTotal">0</span>)
@@ -116,11 +119,13 @@ function renderOrders() {
                 <span class="font-black text-xl italic uppercase">${table}</span>
                 <span class="text-green-400 font-bold text-2xl">₹${total}</span>
             </div>
-            <pre class="pointer-events-none">${items.replace(/\\n/g, '\n')}</pre>
-            ${!isHistory && !isMergeMode ? `
-            <div class="flex gap-3 mt-4">
+            <pre class="mb-3">${items.replace(/\\n/g, '\n')}</pre>
+            ${!isMergeMode ? `
+            <div class="flex gap-3">
                 <button class="btn-kot flex-1" onclick="event.stopPropagation(); printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT</button>
-                <button class="btn-bill flex-1" onclick="event.stopPropagation(); printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')">BILL</button>
+                <button class="btn-bill flex-1" onclick="event.stopPropagation(); ${isHistory ? `printDoc('BILL','${table}','${encodeURIComponent(items)}','${total}')` : `printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')`}">
+                    ${isHistory ? 'RE-PRINT' : 'BILL'}
+                </button>
             </div>` : ''}
         `;
         if (isHistory) historyDiv.appendChild(card);
@@ -130,9 +135,7 @@ function renderOrders() {
 
 function toggleMergeMode() {
     isMergeMode = !isMergeMode;
-    const btn = document.getElementById("mergeBtnToggle");
-    btn.innerHTML = isMergeMode ? "Cancel" : "Merge";
-    btn.classList.toggle("bg-red-600");
+    document.getElementById("mergeBtnToggle").classList.toggle("bg-red-600");
     renderOrders();
 }
 
@@ -188,34 +191,33 @@ function printDoc(type, table, itemsEnc, total) {
     
     let content = "";
     if(type === 'KOT') {
-        content = `<div style="width:260px; font-family:monospace; padding:5px;">
-            <center><b style="font-size:20px; border:2px solid black; padding:2px 10px;">K.O.T</b><br>
-            <b style="font-size:22px; display:block; margin-top:8px;">TABLE: ${table}</b></center>
-            <div class="print-line"></div>
-            <div style="font-size:12px;">${new Date().toLocaleString()}</div>
+        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black;">
+            <center><b style="font-size:22px; border:2px solid black; padding:2px 10px;">K.O.T</b><br><b style="font-size:24px; display:block; margin-top:10px;">TABLE: ${table}</b></center>
             <div class="print-line" style="border-style:solid !important;"></div>
-            <div style="font-size:17px; font-weight:bold; line-height:1.5;">${items}</div>
+            <div style="font-size:11px;">${new Date().toLocaleString()}</div>
+            <div class="print-line" style="border-style:solid !important;"></div>
+            <div style="font-size:18px; font-weight:bold; line-height:1.4;">${items}</div>
             <div class="print-line" style="border-style:solid !important;"></div>
             <center>*** KITCHEN COPY ***</center>
         </div>`;
     } else {
-        content = `<div style="width:260px; font-family:monospace; padding:5px;">
-            <center><b style="font-size:18px;">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
+        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black;">
+            <center><b style="font-size:19px;">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
             <div class="print-line"></div>
-            <div style="display:flex; justify-content:space-between; font-size:14px;"><b>INVOICE</b><b>Table: ${table}</b></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;"><b>INVOICE</b><b>Table: ${table}</b></div>
             <div style="font-size:11px;">${new Date().toLocaleString()}</div>
             <div class="print-line"></div>
             <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px; border-bottom:1px solid black; margin-bottom:5px;"><span>DESCRIPTION</span><span>PRICE</span></div>
-            <div style="font-size:14px; line-height:1.4; white-space:pre-wrap;">${items}</div>
+            <div style="font-size:14px; line-height:1.5; white-space:pre-wrap;">${items}</div>
             <div class="print-line"></div>
-            <div style="text-align:right; font-size:18px;"><b>GRAND TOTAL: ₹${total}</b></div>
+            <div style="text-align:right; font-size:20px;"><b>TOTAL: ₹${total}</b></div>
             <div class="print-line"></div>
-            <center><b style="font-size:13px;">Thank You 🙏 Visit Again!</b><br><small style="font-size:10px;">Instagram: @rpwebservice</small></center>
+            <center><b style="font-size:13px;">Thank You 🙏 Visit Again!</b><br><small style="font-size:9px;">Insta: @rpwebservice</small></center>
         </div>`;
     }
 
     area.innerHTML = content;
-    setTimeout(() => { window.print(); area.innerHTML = ""; }, 800);
+    setTimeout(() => { window.print(); area.innerHTML = ""; }, 700);
 }
 
 loadOrders();
