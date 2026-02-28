@@ -1,242 +1,154 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>POS Admin — Royal Food Corner</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Royal Food POS</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
 <style>
-  body { background:#05070a; color:#e2e8f0; font-family:system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial; }
-  .card { background:#111827; border:1px solid #1f2937; border-radius:10px; padding:12px; }
-  .history-card { background:#0f172a; border:1px solid #374151; opacity:0.6; }
-  button { font-weight:700; font-size:12px; height:38px; border-radius:8px; padding:0 10px; cursor:pointer; }
-  .btn-kot { background:#ea580c; color:white; }
-  .btn-print { background:#3b82f6; color:white; }
-  .badge { background:#ef4444; padding:3px 8px; border-radius:999px; font-size:12px; }
-  pre { background:#000; padding:8px; border-radius:6px; font-size:13px; white-space:pre-wrap; color:#cbd5e1; }
-  @media print {
-    body * { visibility:hidden; }
-    #printSection, #printSection * { visibility:visible; }
-    #printSection { position:absolute; left:0; top:0; width:100%; background:white; color:black; padding:6px; }
-  }
+body{background:#05070a;color:#e2e8f0;font-family:sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+.card{background:#111827;border:1px solid #1f2937;border-radius:15px;padding:15px;margin-bottom:15px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}
+.history-card{background:#0f172a;border:1px solid #374151;opacity:.35;filter:grayscale(0.8)}
+button{font-weight:700;font-size:14px;height:48px;border-radius:12px;transition:0.2s}
+button:active{transform:scale(0.96)}
+.btn-kot{background:#ea580c;color:#fff;border-bottom:3px solid #9a3412}
+.btn-bill{background:#3b82f6;color:#fff;border-bottom:3px solid #1d4ed8}
+pre{background:#000;padding:12px;border-radius:10px;font-size:15px;white-space:pre-wrap;color:#cbd5e1;border:1px solid #1f2937;line-height:1.4;font-family:monospace}
+
+@media print {
+  body * { visibility:hidden }
+  #printSection, #printSection * { visibility:visible }
+  #printSection { position:absolute; left:0; top:0; width:100%; background:#fff; color:#000; padding:10px }
+}
 </style>
 </head>
-<body class="p-4 pb-28">
 
-<header class="sticky top-0 bg-[#05070a]/95 backdrop-blur z-40 py-3 mb-4 border-b border-slate-800">
-  <div class="flex justify-between items-center mb-3">
-    <h1 class="text-lg font-black">ROYAL FOOD CORNER <span id="orderCount" class="badge">0</span></h1>
-    <div class="flex gap-2 items-center">
-      <button onclick="loadOrders()" class="bg-gray-700 text-white px-3 rounded">REFRESH</button>
-    </div>
-  </div>
-  <input id="searchInput" onkeyup="filterOrders()" placeholder="Search Table..." class="w-full bg-gray-900 border border-gray-700 rounded-lg h-10 px-3 text-sm">
+<body class="p-4 pb-24">
+
+<header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur py-2 z-50">
+  <h1 class="text-xl font-black italic tracking-tighter text-white">ROYAL FOOD <span class="text-orange-500 font-bold">POS</span></h1>
+  <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-3 h-8 rounded-lg border border-gray-700 uppercase">Refresh</button>
 </header>
 
 <main>
-  <section>
-    <h2 class="text-xs text-orange-400 font-bold mb-3">Incoming Orders</h2>
-    <div id="orderList" class="grid md:grid-cols-2 gap-4 mb-6"></div>
-  </section>
+  <h2 class="text-[11px] text-orange-500 font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+    <span class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></span> Incoming Orders
+  </h2>
+  <div id="orderList"></div>
 
-  <hr class="border-slate-800 my-6">
+  <hr class="my-8 border-gray-800">
 
-  <section>
-    <h2 class="text-xs text-gray-400 font-bold mb-3">History (after print — auto 24h clear)</h2>
-    <div id="historyList" class="flex flex-col gap-4 mb-6"></div>
-  </section>
+  <h2 class="text-[11px] text-gray-500 font-bold uppercase tracking-widest mb-4">History (Today)</h2>
+  <div id="historyList"></div>
 </main>
 
-<div id="printSection" style="display:none; font-family:monospace;"></div>
-<audio id="beep" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+<div id="printSection" style="display:none"></div>
 
 <script>
-/*
-  FINAL ADMIN HTML
-  - Each spreadsheet ROW is treated as one order.
-  - Columns: A (table), B..D (items) , E (total) , F (timestamp)  <-- typical
-  - Printing BILL auto moves that ROW's id to history (localStorage).
-  - History auto cleared after 24 hours.
-  - Update SHEET_URL if you republish sheet.
-*/
+// 🔥 अपना लिंक यहाँ डालें
+const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+const HISTORY_KEY="royal_pos_history_final_v10";
 
-// <-- Paste your published CSV link here (published to web as CSV) -->
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-
-const HISTORY_KEY = 'pos_history_final_v1';
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-let lastLiveCount = 0;
 
-// Remove history entries older than 24 hours (uses saveTime)
-function cleanupHistory() {
-  const now = Date.now();
-  history = history.filter(h => (now - (h.saveTime || 0)) < 24 * 60 * 60 * 1000);
+function saveHistory() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = "", insideQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char == '"') { insideQuote = !insideQuote }
+    else if (char == "," && !insideQuote) { row.push(cell); cell = "" }
+    else if ((char == "\n" || char == "\r") && !insideQuote) {
+      if (cell || row.length) { row.push(cell); rows.push(row); row = []; cell = "" }
+    } else { cell += char }
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row) }
+  return rows;
 }
 
 async function loadOrders() {
-  cleanupHistory();
   try {
     const res = await fetch(SHEET_URL + "&t=" + Date.now());
-    const text = await res.text();
+    const data = await res.text();
+    const rows = parseCSV(data);
 
-    // Simple CSV split — assumes your sheet is published with each logical column in a cell.
-    const rows = text.split('\n').map(r => r.split(','));
+    const orderDiv = document.getElementById("orderList");
+    const historyDiv = document.getElementById("historyList");
+    orderDiv.innerHTML = "";
+    historyDiv.innerHTML = "";
 
-    const orderList = document.getElementById('orderList');
-    const historyList = document.getElementById('historyList');
-    orderList.innerHTML = '';
-    historyList.innerHTML = '';
-
-    let liveCount = 0;
-
-    // Iterate rows bottom→top so newest show first
+    // 0:Time, 1:Table, 2:Items, 3:Total
     for (let i = rows.length - 1; i >= 1; i--) {
       const row = rows[i];
+      if (!row || !row[1]) continue;
 
-      // Protect if row shorter
-      const table = (row[0] || '').trim();
-      if (!table) continue; // skip empty rows
+      const time = row[0];
+      const table = row[1];
+      const itemsCell = row[2] || "No items";
+      const total = row[3] || "0";
 
-      // pick last column as timestamp if exists
-      const timestamp = (row[row.length - 1] || '').trim();
+      const id = (table + time).replace(/\s/g, "");
+      const isHistory = history.includes(id);
 
-      // build unique id from table + timestamp (stable per form submission)
-      const id = (table + '|' + timestamp).replace(/\s/g, '');
-
-      // Build items from SAME ROW — do NOT combine across rows.
-      // We take every column except A (table) and last column (timestamp) and show lines.
-      let itemsText = '';
-      let totalFromSheet = '';
-      // If your sheet has an explicit TOTAL column (e.g., column E), you can set it by index.
-      // To keep flexible, we'll try to detect any column with 'TOTAL' header — but here using row values:
-      for (let c = 1; c < row.length - 1; c++) {
-        const cell = (row[c] || '').trim();
-        if (cell) itemsText += cell + '\n';
-      }
-
-      // Optional: try to detect a numeric total in the row (last numeric cell before timestamp)
-      // Look backwards from timestamp column to find a numeric value (price/total)
-      let detectedTotal = 0;
-      for (let c = row.length - 2; c >= 1; c--) {
-        const v = (row[c] || '').replace(/[^0-9.\-]/g,'').trim();
-        if (v && !isNaN(Number(v))) { detectedTotal = Number(v); break; }
-      }
-
-      // If detection failed, leave total string blank (admin sees items only)
-      const totalDisplay = detectedTotal ? '₹' + detectedTotal : '';
-
-      // Check history (we store objects with id & saveTime)
-      const inHistory = history.find(h => h.id === id);
-
-      // Build card
-      const card = document.createElement('div');
-      card.className = 'card' + (inHistory ? ' history-card' : '');
-      card.innerHTML = `
-        <div class="flex justify-between">
-          <div class="font-bold">${escapeHtml(table)}</div>
-          <div class="text-green-400 font-bold">${totalDisplay}</div>
+      const card = `
+      <div class="card ${isHistory ? "history-card" : ""}">
+        <div class="flex justify-between items-center mb-3">
+          <span class="font-black text-xl italic">${table}</span>
+          <span class="text-green-400 font-black text-2xl">₹${total}</span>
         </div>
-        <pre class="mt-2 text-sm">${escapeHtml(itemsText)}</pre>
-        <div class="flex gap-2 mt-3">
-          <button class="btn-kot" onclick="printKOT('${escapeJs(id)}','${escapeJs(table)}','${encodeURIComponent(itemsText)}')">KOT</button>
-          ${inHistory ? '' : `<button class="btn-print" onclick="printAndArchive('${escapeJs(id)}','${escapeJs(table)}','${encodeURIComponent(itemsText)}',${detectedTotal})">PRINT</button>`}
-        </div>
-      `;
+        <pre>${itemsCell.replace(/\\n/g, '\n')}</pre>
+        ${!isHistory ? `
+        <div class="flex gap-3 mt-4">
+          <button class="btn-kot flex-1" onclick="printDoc('KOT','${table}','${encodeURIComponent(itemsCell)}','')">KOT</button>
+          <button class="btn-bill flex-1" onclick="printBill('${id}','${table}','${encodeURIComponent(itemsCell)}','${total}')">PRINT BILL</button>
+        </div>` : ''}
+      </div>`;
 
-      if (inHistory) {
-        historyList.appendChild(card);
-      } else {
-        orderList.appendChild(card);
-        liveCount++;
-      }
+      if (isHistory) historyDiv.innerHTML += card;
+      else orderDiv.innerHTML += card;
     }
+    if(orderDiv.innerHTML === "") orderDiv.innerHTML = "<p class='text-center text-gray-600 py-10 text-xs tracking-widest'>NO PENDING ORDERS</p>";
+  } catch (e) { console.error("Load Error:", e); }
+}
 
-    // beep if new
-    if (liveCount > lastLiveCount && lastLiveCount !== 0) document.getElementById('beep').play();
-    lastLiveCount = liveCount;
-    document.getElementById('orderCount').innerText = liveCount;
-
-  } catch (err) {
-    console.error('LoadOrders error:', err);
+function printBill(id, table, itemsEnc, total) {
+  printDoc("BILL", table, itemsEnc, total);
+  if(!history.includes(id)) {
+    history.push(id);
+    if(history.length > 100) history.shift(); // मेमोरी बचाने के लिए पुराने हटाए
+    saveHistory();
   }
+  setTimeout(loadOrders, 600);
 }
 
-// Print KOT (does NOT archive)
-function printKOT(id, table, itemsEncoded) {
-  const items = decodeURIComponent(itemsEncoded || '');
-  printHtml('KOT', table, items, 0);
-}
-
-// Print BILL then move to history automatically
-function printAndArchive(id, table, itemsEncoded, total = 0) {
-  const items = decodeURIComponent(itemsEncoded || '');
-  printHtml('BILL', table, items, total);
-  // Save to history (object with id and saveTime)
-  history.push({ id, saveTime: Date.now() });
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  // Reload to update view (PRINT button disappears)
-  setTimeout(loadOrders, 200); // short delay to ensure print dialog opens first on some browsers
-}
-
-// Build and print HTML (thermal friendly)
-function printHtml(type, table, items, total = 0) {
-  const area = document.getElementById('printSection');
-  area.style.display = 'block';
-
-  // Tune width 280px for 58mm thermal; increase for 80mm if needed
-  const headerName = 'ROYAL FOOD CORNER';
-  const address = 'Asansol, West Bengal';
-  const phone = 'Ph: 9876543210';
-
-  // Escape content for HTML
-  const safeItems = escapeHtml(items).replace(/\n/g, '<br>');
-
+function printDoc(type, table, itemsEnc, total) {
+  const items = decodeURIComponent(itemsEnc).replace(/\\n/g, '\n');
+  const area = document.getElementById("printSection");
+  area.style.display = "block";
   area.innerHTML = `
-    <div style="width:280px;font-family:monospace;padding:8px;color:black;">
-      <div style="text-align:center;font-weight:bold;font-size:16px">${headerName}</div>
-      <div style="text-align:center;font-size:11px;margin-top:4px;">${address}<br>${phone}</div>
-      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
-      <div style="font-size:12px;"><strong>${type}</strong> &nbsp; | &nbsp; Table: ${escapeHtml(table)}</div>
-      <div style="font-size:11px;margin-top:4px;">${new Date().toLocaleString()}</div>
-      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
-      <div style="font-size:13px;line-height:1.2;">${safeItems}</div>
-      ${total ? `<div style="border-top:1px dashed #000;margin:8px 0;"></div>
-                 <div style="text-align:right;font-weight:bold;font-size:14px;">TOTAL: ₹${total}</div>` : ''}
-      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
-      <div style="text-align:center;font-size:11px;">Thank You 🙏 Visit Again</div>
-      <div style="height:18px;"></div>
-    </div>`;
-
-  // Trigger print dialog
+  <div style="width:280px;padding:10px;font-family:monospace;background:#fff;color:#000;border:1px solid #000">
+    <center><b style="font-size:18px">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
+    <div style="border-top:1px dashed #000;margin:10px 0"></div>
+    <div style="display:flex;justify-content:space-between"><b>${type}</b><b>Table: ${table}</b></div>
+    <div style="font-size:11px">${new Date().toLocaleString()}</div>
+    <div style="border-top:1px solid #000;margin:10px 0"></div>
+    <div style="white-space:pre-wrap;font-size:14px;line-height:1.2">${items}</div>
+    ${total ? `<div style="border-top:1px dashed #000;margin:10px 0"></div>
+    <div style="text-align:right;font-weight:bold;font-size:18px">TOTAL: ₹${total}</div>` : ''}
+    <div style="border-top:1px dashed #000;margin:10px 0"></div>
+    <center>Thank You 🙏 Visit Again</center>
+  </div>`;
   window.print();
-  area.style.display = 'none';
+  area.style.display = "none";
 }
 
-// simple filter
-function filterOrders(){
-  const q = document.getElementById('searchInput').value.trim().toUpperCase();
-  document.querySelectorAll('#orderList .card, #historyList .card').forEach(card => {
-    card.style.display = card.innerText.toUpperCase().includes(q) ? '' : 'none';
-  });
-}
-
-// helpers to safely pass values into HTML/js
-function escapeHtml(str) {
-  if (!str) return '';
-  return str
-    .toString()
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-function escapeJs(str) {
-  if (!str) return '';
-  return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
-}
-
-// initial load + auto refresh
 loadOrders();
 setInterval(loadOrders, 15000);
-
 </script>
 </body>
 </html>
