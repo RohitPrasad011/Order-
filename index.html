@@ -8,8 +8,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .menu-card { transition: all 0.2s ease; }
-        .menu-card:active { transform: scale(0.98); }
         .details-box { transition: max-height 0.3s ease-out; overflow: hidden; }
+        /* गूगल शीट में डेटा को सही दिखाने के लिए न्यूलाइन सपोर्ट */
+        .white-space-pre { white-space: pre-wrap; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans pb-44">
@@ -17,53 +18,46 @@
         
         <div class="bg-gradient-to-r from-red-600 to-red-700 p-8 text-white text-center rounded-b-[3rem] shadow-xl">
             <h1 class="text-4xl font-black italic tracking-tighter uppercase">My Restaurant</h1>
-            <p class="text-[10px] font-bold opacity-80 mt-1 tracking-[0.3em] uppercase">Best Food • Great Taste</p>
+            <p class="text-[10px] font-bold opacity-80 mt-1 tracking-[0.3em] uppercase">Order Fresh • Eat Fresh</p>
         </div>
 
         <div class="p-6">
-            <label class="block text-gray-400 text-[10px] font-black mb-1 uppercase tracking-widest ml-1">Select Your Table</label>
-            <div class="relative">
-                <select id="tableNo" class="w-full p-4 border-2 border-red-50 rounded-2xl bg-gray-50 font-black text-red-600 text-xl appearance-none outline-none focus:ring-2 focus:ring-red-500 transition-all shadow-inner">
-                    <option value="1">Table 01</option>
-                    <option value="2">Table 02</option>
-                    <option value="3">Table 03</option>
-                    <option value="4">Table 04</option>
-                    <option value="5">Table 05</option>
-                    <option value="6">Table 06</option>
-                    <option value="7">Table 07</option>
-                    <option value="8">Table 08</option>
-                    <option value="9">Table 09</option>
-                    <option value="10">Table 10</option>
-                </select>
-                <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-red-300">
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-            </div>
+            <label class="block text-gray-400 text-[10px] font-black mb-1 uppercase tracking-widest ml-1">Select Table Number</label>
+            <select id="tableNo" class="w-full p-4 border-2 border-red-50 rounded-2xl bg-gray-50 font-black text-red-600 text-xl appearance-none outline-none focus:ring-2 focus:ring-red-500 shadow-inner">
+                <option value="1">Table 01</option>
+                <option value="2">Table 02</option>
+                <option value="3">Table 03</option>
+                <option value="4">Table 04</option>
+                <option value="5">Table 05</option>
+                <option value="6">Table 06</option>
+                <option value="7">Table 07</option>
+                <option value="8">Table 08</option>
+                <option value="9">Table 09</option>
+                <option value="10">Table 10</option>
+            </select>
         </div>
 
         <div id="menuList" class="px-6 space-y-4">
-            <div class="text-center py-20">
-                <i class="fas fa-utensils text-gray-200 text-5xl mb-4 animate-bounce"></i>
-                <p class="text-gray-400 font-bold italic uppercase text-xs tracking-widest">Loading Fresh Menu...</p>
+            <div class="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest">
+                <i class="fas fa-spinner animate-spin mb-2"></i><br>Loading Menu...
             </div>
         </div>
 
         <div class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md p-6 border-t border-gray-100 shadow-[0_-15px_35px_rgba(0,0,0,0.1)] rounded-t-[3rem]">
             <div class="flex justify-between items-end mb-5 px-2">
                 <div>
-                    <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Bill</p>
+                    <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Payable</p>
                     <p class="text-4xl font-black text-gray-900 leading-none">₹<span id="totalDisplay">0</span></p>
                 </div>
-                <div id="cartStatus" class="hidden animate-pulse">
-                    <span id="itemCount" class="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter italic shadow-lg shadow-red-200">0 Items</span>
+                <div id="cartStatus" class="hidden">
+                    <span id="itemCount" class="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase italic shadow-lg shadow-red-200">0 Items</span>
                 </div>
             </div>
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-red-100 active:scale-95 transition-all uppercase tracking-widest">Confirm Order</button>
+            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all uppercase tracking-widest">Confirm Order</button>
         </div>
     </div>
 
     <script>
-        // आपके Sheets और Form के लिंक्स
         const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
         const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
         
@@ -85,22 +79,22 @@
                     const name = cols[0].replace(/"/g, '').trim();
                     const price = parseInt(cols[1].replace(/"/g, '').trim());
                     const img = cols[2] ? cols[2].replace(/"/g, '').trim() : "";
-                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "No details available.";
+                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "स्वादिष्ट व्यंजन।";
 
                     if(name && !isNaN(price)) {
                         menuData.push({name, price});
                         container.innerHTML += `
                             <div class="menu-card bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden mb-4">
                                 <div class="flex p-4 items-center">
-                                    <img src="${img}" class="w-20 h-20 object-cover rounded-2xl shadow-inner bg-gray-50" onerror="this.src='https://via.placeholder.com/100?text=Food'">
+                                    <img src="${img}" class="w-20 h-20 object-cover rounded-2xl bg-gray-50 shadow-inner" onerror="this.src='https://via.placeholder.com/100?text=Food'">
                                     <div class="ml-4 flex-1">
                                         <h3 class="font-black text-gray-800 text-base leading-tight">${name}</h3>
                                         <p class="text-red-600 font-black text-lg mt-1">₹${price}</p>
                                     </div>
                                     <div class="flex items-center bg-gray-100 rounded-2xl p-1 shadow-inner">
-                                        <button onclick="updateQty('${name}', -1)" class="w-9 h-9 bg-white rounded-xl shadow-sm text-gray-400 font-bold hover:text-red-600 transition-colors">-</button>
+                                        <button onclick="updateQty('${name}', -1)" class="w-9 h-9 bg-white rounded-xl shadow-sm text-gray-400 font-bold">-</button>
                                         <span id="qty-${name}" class="px-4 font-black text-gray-800 text-sm">0</span>
-                                        <button onclick="updateQty('${name}', 1)" class="w-9 h-9 bg-red-600 rounded-xl shadow-md text-white font-bold transition-transform active:scale-110">+</button>
+                                        <button onclick="updateQty('${name}', 1)" class="w-9 h-9 bg-red-600 rounded-xl shadow-md text-white font-bold">+</button>
                                     </div>
                                 </div>
                                 
@@ -115,7 +109,7 @@
                     }
                 });
             } catch (e) {
-                document.getElementById('menuList').innerHTML = "<p class='text-center text-red-500 font-bold'>Menu Load Error!</p>";
+                document.getElementById('menuList').innerHTML = "Menu Load Error!";
             }
         }
 
@@ -130,7 +124,6 @@
             if (!cart[name]) cart[name] = 0;
             cart[name] += change;
             if (cart[name] < 0) cart[name] = 0;
-            
             document.getElementById(`qty-${name}`).innerText = cart[name];
             calculateTotal();
         }
@@ -157,21 +150,20 @@
                 if(cart[name] > 0) {
                     let item = menuData.find(m => m.name === name);
                     let subtotal = item.price * cart[name];
-                    // फॉर्मेट: Item (Qty) @Price = Total
-                    orderLines.push(`${name} (x${cart[name]}) @₹${item.price}=₹${subtotal}`);
+                    // फॉर्मेट: Item (Qty) - ₹Total
+                    orderLines.push(`${name} (x${cart[name]}) - ₹${subtotal}`);
                     grandTotal += subtotal;
                 }
             }
 
-            if(orderLines.length === 0) return alert("Please select some items first!");
+            if(orderLines.length === 0) return alert("Please select items!");
 
-            // सबको एक ही स्ट्रिंग में जोड़ना (एक ही कॉलम के लिए)
-            const finalOrderString = orderLines.join(" | ");
+            // '\n' का इस्तेमाल ताकि शीट में एक के नीचे एक दिखे
+            const finalOrderString = orderLines.join("\n");
 
             const table = document.getElementById('tableNo').value;
             const btn = document.getElementById('orderBtn');
-            btn.disabled = true; 
-            btn.innerText = "Processing...";
+            btn.disabled = true; btn.innerText = "Processing...";
 
             const formData = new URLSearchParams();
             formData.append('entry.1750325692', "Table No. " + table);
@@ -187,11 +179,6 @@
             .then(() => {
                 alert("Order Placed Successfully! ✅");
                 location.reload();
-            })
-            .catch(() => {
-                alert("Something went wrong. Check internet!");
-                btn.disabled = false;
-                btn.innerText = "Confirm Order";
             });
         }
         loadMenu();
