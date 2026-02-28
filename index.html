@@ -5,29 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Restaurant Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-40">
+<body class="bg-gray-100 font-sans pb-40">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative">
         
         <div class="bg-red-600 p-6 text-white text-center rounded-b-[2rem] shadow-md">
-            <h1 class="text-3xl font-black tracking-tighter italic">MY RESTAURANT</h1>
-            <p class="text-xs opacity-90 mt-1 uppercase tracking-widest">Order Your Favorites</p>
+            <h1 class="text-3xl font-black italic tracking-tighter">MY RESTAURANT</h1>
+            <p class="text-xs opacity-90 mt-1 uppercase">Fresh & Delicious</p>
         </div>
 
         <div class="p-4">
             <label class="block text-gray-700 text-xs font-bold mb-1 uppercase ml-1">Select Table Number</label>
-            <select id="tableNo" class="w-full p-3 border-2 border-red-100 rounded-xl bg-red-50 font-bold text-red-600 outline-none focus:border-red-500 appearance-none shadow-sm">
-                <script>
-                    for(let i=1; i<=10; i++) {
-                        document.write(`<option value="${i}">Table No. ${i}</option>`);
-                    }
-                </script>
+            <select id="tableNo" class="w-full p-3 border-2 border-red-100 rounded-xl bg-red-50 font-bold text-red-600 outline-none shadow-sm appearance-none">
+                <option value="1">Table No. 1</option>
+                <option value="2">Table No. 2</option>
+                <option value="3">Table No. 3</option>
+                <option value="4">Table No. 4</option>
+                <option value="5">Table No. 5</option>
+                <option value="6">Table No. 6</option>
+                <option value="7">Table No. 7</option>
+                <option value="8">Table No. 8</option>
+                <option value="9">Table No. 9</option>
+                <option value="10">Table No. 10</option>
             </select>
         </div>
 
         <div id="menuList" class="px-4 space-y-4">
-            <p class="text-center py-10 text-gray-400">Loading delicious food...</p>
+            <p class="text-center py-10 text-gray-400 animate-pulse">Loading menu...</p>
         </div>
 
         <div class="fixed bottom-0 max-w-md w-full bg-white p-5 border-t shadow-[0_-10px_20px_rgba(0,0,0,0.05)] rounded-t-3xl">
@@ -36,15 +40,16 @@
                     <p class="text-gray-400 text-[10px] font-bold uppercase">Total Bill</p>
                     <p class="text-2xl font-black text-gray-900">₹<span id="totalDisplay">0</span></p>
                 </div>
-                <div id="cartStatus" class="text-right hidden text-xs font-bold text-red-600">
-                    <span id="itemCount">0</span> ITEMS ADDED
+                <div id="cartStatus" class="hidden text-xs font-bold text-red-600">
+                    <span id="itemCount">0</span> ITEMS
                 </div>
             </div>
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all uppercase">Place Order</button>
+            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all uppercase tracking-widest">Place Order</button>
         </div>
     </div>
 
     <script>
+        // आपकी Sheets और Form के लिंक्स
         const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
         const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
         
@@ -59,28 +64,28 @@
                 const container = document.getElementById('menuList');
                 container.innerHTML = "";
 
-                rows.forEach((row, index) => {
+                rows.forEach(row => {
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    if(cols.length < 3) return;
+                    if(cols.length < 2) return;
 
                     const name = cols[0].replace(/"/g, '').trim();
                     const price = parseInt(cols[1].replace(/"/g, '').trim());
-                    const img = cols[2].replace(/"/g, '').trim();
+                    const img = cols[2] ? cols[2].replace(/"/g, '').trim() : "";
                     const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "";
 
                     if(name && !isNaN(price)) {
                         menuData.push({name, price});
                         container.innerHTML += `
-                            <div class="flex bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                <img src="${img}" class="w-24 h-24 object-cover bg-gray-100" onerror="this.src='https://via.placeholder.com/100?text=Food'">
-                                <div class="p-3 flex-1 flex flex-col justify-between">
+                            <div class="flex bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm p-2">
+                                <img src="${img}" class="w-20 h-20 object-cover rounded-xl bg-gray-50" onerror="this.src='https://via.placeholder.com/100?text=Food'">
+                                <div class="ml-3 flex-1 flex flex-col justify-between">
                                     <div>
-                                        <h3 class="font-bold text-gray-800 leading-tight">${name}</h3>
+                                        <h3 class="font-bold text-gray-800 text-sm">${name}</h3>
                                         <p class="text-[10px] text-gray-400 line-clamp-1">${desc}</p>
                                     </div>
-                                    <div class="flex items-center justify-between mt-2">
+                                    <div class="flex items-center justify-between">
                                         <span class="font-black text-red-600">₹${price}</span>
-                                        <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                                        <div class="flex items-center bg-gray-100 rounded-lg p-1 scale-90">
                                             <button onclick="updateQty('${name}', -1)" class="w-7 h-7 bg-white rounded-md shadow-sm text-gray-600 font-bold">-</button>
                                             <span id="qty-${name}" class="px-3 font-bold text-sm">0</span>
                                             <button onclick="updateQty('${name}', 1)" class="w-7 h-7 bg-red-600 rounded-md shadow-sm text-white font-bold">+</button>
@@ -91,21 +96,19 @@
                         `;
                     }
                 });
-            } catch (e) { container.innerHTML = "Sheet Link Error!"; }
+            } catch (e) { container.innerHTML = "Sheet Error!"; }
         }
 
         function updateQty(name, change) {
             if (!cart[name]) cart[name] = 0;
             cart[name] += change;
             if (cart[name] < 0) cart[name] = 0;
-            
             document.getElementById(`qty-${name}`).innerText = cart[name];
             calculateTotal();
         }
 
         function calculateTotal() {
-            let total = 0;
-            let count = 0;
+            let total = 0, count = 0;
             for (let name in cart) {
                 if(cart[name] > 0) {
                     let item = menuData.find(m => m.name === name);
@@ -115,36 +118,43 @@
             }
             document.getElementById('totalDisplay').innerText = total;
             document.getElementById('itemCount').innerText = count;
-            document.getElementById('cartStatus').style.display = count > 0 ? 'block' : 'none';
+            document.getElementById('cartStatus').classList.toggle('hidden', count === 0);
         }
 
         function placeOrder() {
-            let orderSummary = [];
-            let totalBill = 0;
+            let itemsText = [];
+            let finalTotal = 0;
             for (let name in cart) {
                 if(cart[name] > 0) {
-                    orderSummary.push(`${name} (x${cart[name]})`);
+                    itemsText.push(`${name} (x${cart[name]})`);
                     let item = menuData.find(m => m.name === name);
-                    totalBill += (item.price * cart[name]);
+                    finalTotal += (item.price * cart[name]);
                 }
             }
 
-            if(orderSummary.length === 0) return alert("Please add some items!");
+            if(itemsText.length === 0) return alert("Please select items!");
 
             const table = document.getElementById('tableNo').value;
             const btn = document.getElementById('orderBtn');
-            btn.disabled = true; btn.innerText = "Sending...";
+            btn.disabled = true; btn.innerText = "Processing...";
 
-            const formData = new FormData();
+            // Form Data - IDs match your Google Form
+            const formData = new URLSearchParams();
             formData.append('entry.1750325692', table);
-            formData.append('entry.732456507', orderSummary.join(", "));
-            formData.append('entry.424181828', totalBill);
+            formData.append('entry.732456507', itemsText.join(", "));
+            formData.append('entry.424181828', finalTotal);
 
-            fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
+            fetch(FORM_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            })
             .then(() => {
-                alert("Order Sent to Kitchen! ✅");
+                alert("Order Placed Successfully! ✅");
                 location.reload();
-            });
+            })
+            .catch(() => alert("Error! Please try again."));
         }
         loadMenu();
     </script>
