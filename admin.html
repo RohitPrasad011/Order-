@@ -3,152 +3,194 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Royal Food POS</title>
+<title>Royal Food POS — Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-body{background:#05070a;color:#e2e8f0;font-family:sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
-.card{background:#111827;border:1px solid #1f2937;border-radius:15px;padding:15px;margin-bottom:15px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}
-.history-card{background:#0f172a;border:1px solid #374151;opacity:.35;filter:grayscale(0.8)}
-button{font-weight:700;font-size:14px;height:48px;border-radius:12px;transition:0.2s}
-button:active{transform:scale(0.96)}
-.btn-kot{background:#ea580c;color:#fff;border-bottom:3px solid #9a3412}
-.btn-bill{background:#3b82f6;color:#fff;border-bottom:3px solid #1d4ed8}
-pre{background:#000;padding:12px;border-radius:10px;font-size:15px;white-space:pre-wrap;color:#cbd5e1;border:1px solid #1f2937;line-height:1.4;font-family:monospace}
+/* --- App UI Style --- */
+body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
+.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); }
+.history-card { background:#0f172a; opacity:.4; filter: grayscale(0.8); }
 
+button { font-weight:700; font-size:14px; height:48px; border-radius:12px; transition:0.2s; cursor:pointer; }
+button:active { transform: scale(0.96); }
+.btn-kot { background:#ea580c; color:#fff; border-bottom:3px solid #9a3412; }
+.btn-bill { background:#3b82f6; color:#fff; border-bottom:3px solid #1d4ed8; }
+
+pre { background:#000; padding:12px; border-radius:10px; font-size:15px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; line-height:1.4; }
+
+/* 🔥 PRINTING SYSTEM: NO BLANK PAGES 🔥 */
 @media print {
-  body * { visibility:hidden }
-  #printSection, #printSection * { visibility:visible }
-  #printSection { position:absolute; left:0; top:0; width:100%; background:#fff; color:#000; padding:10px }
+    @page { margin: 0; size: auto; }
+    body * { display: none !important; }
+    #printSection, #printSection * { display: block !important; visibility: visible !important; }
+    #printSection { 
+        position: absolute; left: 0; top: 0; width: 100%; 
+        background: white !important; color: black !important; padding: 0; margin: 0; 
+    }
 }
+#printSection { display: none; }
 </style>
 </head>
 
 <body class="p-4 pb-24">
 
-<header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur py-2 z-50">
-  <h1 class="text-xl font-black italic tracking-tighter text-white">ROYAL FOOD <span class="text-orange-500 font-bold">POS</span></h1>
-  <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-3 h-8 rounded-lg border border-gray-700 uppercase">Refresh</button>
+<header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur py-3 z-50 border-b border-gray-800">
+  <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">Royal Food <span class="text-orange-500 font-bold">POS</span></h1>
+  <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-4 h-9 rounded-lg border border-gray-700 uppercase tracking-widest">Refresh</button>
 </header>
 
 <main>
-  <h2 class="text-[11px] text-orange-500 font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-    <span class="w-2 h-2 bg-orange-500 rounded-full animate-ping"></span> Incoming Orders
+  <h2 class="text-[11px] text-orange-500 font-bold uppercase mb-4 tracking-widest flex items-center gap-2">
+    <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span> New Orders
   </h2>
   <div id="orderList"></div>
 
   <hr class="my-8 border-gray-800">
 
-  <h2 class="text-[11px] text-gray-500 font-bold uppercase tracking-widest mb-4">History (Today)</h2>
+  <h2 class="text-[11px] text-gray-500 font-bold uppercase mb-4 tracking-widest">History (Today)</h2>
   <div id="historyList"></div>
 </main>
 
-<div id="printSection" style="display:none"></div>
+<div id="printSection"></div>
 
 <script>
-// 🔥 अपना लिंक यहाँ डालें
-const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-const HISTORY_KEY="royal_pos_history_final_v10";
+// 🔥 YOUR SHEET LINK
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+const HISTORY_KEY = "royal_food_v20_final";
 
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
 
-function saveHistory() {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-}
-
 function parseCSV(text) {
-  const rows = [];
-  let row = [], cell = "", insideQuote = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (char == '"') { insideQuote = !insideQuote }
-    else if (char == "," && !insideQuote) { row.push(cell); cell = "" }
-    else if ((char == "\n" || char == "\r") && !insideQuote) {
-      if (cell || row.length) { row.push(cell); rows.push(row); row = []; cell = "" }
-    } else { cell += char }
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row) }
-  return rows;
+    const rows = [];
+    let row = [], cell = "", insideQuote = false;
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char == '"') { insideQuote = !insideQuote }
+        else if (char == "," && !insideQuote) { row.push(cell); cell = "" }
+        else if ((char == "\n" || char == "\r") && !insideQuote) {
+            if (cell || row.length) { row.push(cell); rows.push(row); row = []; cell = "" }
+        } else { cell += char }
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row) }
+    return rows;
 }
 
 async function loadOrders() {
-  try {
-    const res = await fetch(SHEET_URL + "&t=" + Date.now());
-    const data = await res.text();
-    const rows = parseCSV(data);
+    try {
+        const res = await fetch(SHEET_URL + "&t=" + Date.now());
+        const data = await res.text();
+        const rows = parseCSV(data);
 
-    const orderDiv = document.getElementById("orderList");
-    const historyDiv = document.getElementById("historyList");
-    orderDiv.innerHTML = "";
-    historyDiv.innerHTML = "";
+        const orderDiv = document.getElementById("orderList");
+        const historyDiv = document.getElementById("historyList");
+        orderDiv.innerHTML = ""; historyDiv.innerHTML = "";
 
-    // 0:Time, 1:Table, 2:Items, 3:Total
-    for (let i = rows.length - 1; i >= 1; i--) {
-      const row = rows[i];
-      if (!row || !row[1]) continue;
+        for (let i = rows.length - 1; i >= 1; i--) {
+            const row = rows[i];
+            if (!row || !row[1]) continue;
+            
+            const time = row[0];
+            const table = row[1];
+            const items = row[2] || "No Items";
+            const total = row[3] || "0";
 
-      const time = row[0];
-      const table = row[1];
-      const itemsCell = row[2] || "No items";
-      const total = row[3] || "0";
+            const id = (table + time).replace(/\s/g, "");
+            const isHistory = history.includes(id);
 
-      const id = (table + time).replace(/\s/g, "");
-      const isHistory = history.includes(id);
-
-      const card = `
-      <div class="card ${isHistory ? "history-card" : ""}">
-        <div class="flex justify-between items-center mb-3">
-          <span class="font-black text-xl italic">${table}</span>
-          <span class="text-green-400 font-black text-2xl">₹${total}</span>
-        </div>
-        <pre>${itemsCell.replace(/\\n/g, '\n')}</pre>
-        ${!isHistory ? `
-        <div class="flex gap-3 mt-4">
-          <button class="btn-kot flex-1" onclick="printDoc('KOT','${table}','${encodeURIComponent(itemsCell)}','')">KOT</button>
-          <button class="btn-bill flex-1" onclick="printBill('${id}','${table}','${encodeURIComponent(itemsCell)}','${total}')">PRINT BILL</button>
-        </div>` : ''}
-      </div>`;
-
-      if (isHistory) historyDiv.innerHTML += card;
-      else orderDiv.innerHTML += card;
-    }
-    if(orderDiv.innerHTML === "") orderDiv.innerHTML = "<p class='text-center text-gray-600 py-10 text-xs tracking-widest'>NO PENDING ORDERS</p>";
-  } catch (e) { console.error("Load Error:", e); }
+            const card = `
+            <div class="card ${isHistory ? "history-card" : ""}">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-black text-xl italic">${table}</span>
+                    <span class="text-green-400 font-bold text-2xl">₹${total}</span>
+                </div>
+                <pre>${items.replace(/\\n/g, '\n')}</pre>
+                ${!isHistory ? `
+                <div class="flex gap-3 mt-4">
+                    <button class="btn-kot flex-1" onclick="printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT (Kitchen)</button>
+                    <button class="btn-bill flex-1" onclick="printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')">BILL (Print)</button>
+                </div>` : ''}
+            </div>`;
+            if (isHistory) historyDiv.innerHTML += card;
+            else orderDiv.innerHTML += card;
+        }
+        if(orderDiv.innerHTML === "") orderDiv.innerHTML = "<p class='text-center text-gray-700 py-10 text-xs uppercase tracking-widest'>No Pending Orders</p>";
+    } catch (e) { console.error("Sheet Sync Error:", e); }
 }
 
 function printBill(id, table, itemsEnc, total) {
-  printDoc("BILL", table, itemsEnc, total);
-  if(!history.includes(id)) {
-    history.push(id);
-    if(history.length > 100) history.shift(); // मेमोरी बचाने के लिए पुराने हटाए
-    saveHistory();
-  }
-  setTimeout(loadOrders, 600);
+    printDoc("BILL", table, itemsEnc, total);
+    if(!history.includes(id)) {
+        history.push(id);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+    setTimeout(loadOrders, 1000);
 }
 
 function printDoc(type, table, itemsEnc, total) {
-  const items = decodeURIComponent(itemsEnc).replace(/\\n/g, '\n');
-  const area = document.getElementById("printSection");
-  area.style.display = "block";
-  area.innerHTML = `
-  <div style="width:280px;padding:10px;font-family:monospace;background:#fff;color:#000;border:1px solid #000">
-    <center><b style="font-size:18px">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
-    <div style="border-top:1px dashed #000;margin:10px 0"></div>
-    <div style="display:flex;justify-content:space-between"><b>${type}</b><b>Table: ${table}</b></div>
-    <div style="font-size:11px">${new Date().toLocaleString()}</div>
-    <div style="border-top:1px solid #000;margin:10px 0"></div>
-    <div style="white-space:pre-wrap;font-size:14px;line-height:1.2">${items}</div>
-    ${total ? `<div style="border-top:1px dashed #000;margin:10px 0"></div>
-    <div style="text-align:right;font-weight:bold;font-size:18px">TOTAL: ₹${total}</div>` : ''}
-    <div style="border-top:1px dashed #000;margin:10px 0"></div>
-    <center>Thank You 🙏 Visit Again</center>
-  </div>`;
-  window.print();
-  area.style.display = "none";
+    const items = decodeURIComponent(itemsEnc).replace(/\\n/g, '\n');
+    const area = document.getElementById("printSection");
+    
+    let content = "";
+
+    if(type === 'KOT') {
+        // --- KITCHEN ORDER TICKET DESIGN ---
+        content = `
+        <div style="width:280px; padding:10px; font-family:monospace; color:black;">
+            <center>
+                <div style="border:2px solid black; display:inline-block; padding:2px 15px; font-size:22px; font-weight:bold;">K.O.T</div><br>
+                <b style="font-size:24px; margin-top:10px; display:block; text-decoration: underline;">TABLE: ${table}</b>
+            </center>
+            <div style="border-top:1px solid #000; margin:10px 0"></div>
+            <div style="font-size:12px;">Date: ${new Date().toLocaleString()}</div>
+            <div style="border-top:2px solid #000; margin:5px 0"></div>
+            
+            <div style="white-space:pre-wrap; font-size:18px; font-weight:bold; line-height:1.6; min-height:60px;">${items}</div>
+            
+            <div style="border-top:2px solid #000; margin:10px 0"></div>
+            <center><b style="font-size:14px;">--- KITCHEN COPY ---</b></center>
+            <div style="height:40px;"></div>
+        </div>`;
+    } else {
+        // --- CUSTOMER BILL DESIGN ---
+        content = `
+        <div style="width:280px; padding:15px; font-family:monospace; color:black;">
+            <center>
+                <b style="font-size:18px;">ROYAL FOOD CORNER</b><br>
+                <small>Asansol, West Bengal</small>
+            </center>
+            <div style="border-top:1px dashed #000; margin:10px 0"></div>
+            <div style="display:flex; justify-content:space-between; font-size:14px;">
+                <b>INVOICE</b>
+                <b>Table: ${table}</b>
+            </div>
+            <div style="font-size:11px; margin-top:2px;">Date: ${new Date().toLocaleString()}</div>
+            <div style="border-top:1px dashed #000; margin:10px 0"></div>
+            
+            <div style="white-space:pre-wrap; font-size:15px; line-height:1.4;">${items}</div>
+            
+            <div style="border-top:1px dashed #000; margin:10px 0"></div>
+            <div style="text-align:right; font-weight:bold; font-size:19px;">
+                GRAND TOTAL: ₹${total}
+            </div>
+            <div style="border-top:1px dashed #000; margin:10px 0"></div>
+            
+            <center>
+                <b style="font-size:13px;">Thank You 🙏 Visit Again!</b><br>
+                <small style="font-size:10px; display:block; margin-top:5px;">Instagram: @rpwebservice</small>
+                <small style="font-size:10px;">Contact: +91 0000000000</small>
+            </center>
+            <div style="height:30px;"></div>
+        </div>`;
+    }
+
+    area.innerHTML = content;
+    window.print();
+    area.innerHTML = ""; // Clear after print
 }
 
 loadOrders();
-setInterval(loadOrders, 15000);
+setInterval(loadOrders, 15000); // Auto-sync every 15s
 </script>
 </body>
 </html>
