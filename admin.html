@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>मसाला किचन - स्मार्ट एडमिन</title>
+    <title>POS Admin - Professional Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #0b0f1a; color: #f1f5f9; font-family: sans-serif; }
@@ -10,9 +10,8 @@
         .card-final { background: #1a2234; border: 1px solid #3b82f6; padding: 20px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
         pre { background: #000; padding: 10px; border-radius: 8px; color: #cbd5e0; font-size: 13px; white-space: pre-wrap; margin-top: 10px; border: 1px solid #1a202c; }
         .btn-action { background: #3b82f6; width: 100%; color: white; font-weight: 800; padding: 12px; border-radius: 10px; margin-top: 10px; transition: 0.3s; }
-        .btn-action:hover { background: #2563eb; transform: translateY(-2px); }
-        .btn-print { background: #fff; color: #000; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; }
-        .btn-clear { background: #ef4444; color: #fff; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; }
+        .btn-print { background: #fff; color: #000; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; font-size: 11px; text-transform: uppercase; }
+        .btn-clear { background: #ef4444; color: #fff; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; font-size: 11px; text-transform: uppercase; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -21,14 +20,14 @@
         <header class="flex justify-between items-center mb-10 border-b border-slate-800 pb-6">
             <h1 class="text-3xl font-black text-red-600 italic uppercase">Admin Terminal</h1>
             <button onclick="loadOrders()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95">
-                🔄 रिफ्रेश डेटा
+                REFRESH DATA
             </button>
         </header>
 
-        <h2 class="text-orange-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 1: नए आए हुए ऑर्डर</h2>
+        <h2 class="text-orange-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 1: New Incoming Orders</h2>
         <div id="incomingContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16"></div>
 
-        <h2 class="text-blue-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 2: फाइनल बिलिंग डेस्क (Merged Tables)</h2>
+        <h2 class="text-blue-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 2: Active Billing Desk (Merged)</h2>
         <div id="mergedContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
@@ -63,23 +62,22 @@ async function loadOrders() {
                 incomingDiv.innerHTML += `
                     <div class="card-new">
                         <div class="flex justify-between font-black text-white">
-                            <span>ओरिजिनल: ${data[bIdx]}</span>
+                            <span>Table: ${data[bIdx]}</span>
                             <span class="text-orange-400">₹${data[mIdx]}</span>
                         </div>
                         <pre>${data[iIdx]}</pre>
                         <button class="btn-action" onclick="askAndLink('${data[bIdx]}', '${encodeURIComponent(data[iIdx])}', ${data[mIdx]}, '${id}')">
-                           बिल में जोड़ें ➕
+                           ADD TO BILL +
                         </button>
                     </div>`;
             }
         }
         renderMergedBills();
-    } catch (e) { console.log("डेटा एरर"); }
+    } catch (e) { console.log("Data sync error"); }
 }
 
-// नया फीचर: फैमिली के लिए टेबल मर्ज करना
 function askAndLink(originalTable, items, price, id) {
-    let finalTable = prompt("यह ऑर्डर किस टेबल के बिल में जोड़ना है?", originalTable);
+    let finalTable = prompt("Assign to which Table Bill?", originalTable);
     
     if (finalTable != null) {
         if (!linkedBills[finalTable]) {
@@ -103,19 +101,19 @@ function renderMergedBills() {
         mergedDiv.innerHTML += `
             <div class="card-final">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-black text-white italic">टेबल: ${table}</h2>
-                    <span class="bg-green-900 text-green-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase">Active</span>
+                    <h2 class="text-2xl font-black text-white italic">${table}</h2>
+                    <span class="bg-green-900 text-green-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-widest">Active</span>
                 </div>
                 <div class="bg-black/40 p-4 rounded-xl mb-4 max-h-48 overflow-y-auto text-sm text-slate-300 border border-slate-800">
                     ${bill.items.map(i => `<div class="py-2 border-b border-white/5 last:border-0">${i}</div>`).join('')}
                 </div>
                 <div class="flex justify-between font-black text-xl mb-6 text-green-400 border-t border-slate-800 pt-4">
-                    <span>कुल बिल:</span>
+                    <span>Grand Total:</span>
                     <span>₹${bill.total}</span>
                 </div>
                 <div class="flex gap-3">
-                    <button class="btn-print" onclick="printFinal('${table}')">प्रिंट (Print)</button>
-                    <button class="btn-clear" onclick="settle('${table}')">फाइनल (Settle)</button>
+                    <button class="btn-print" onclick="printFinal('${table}')">Print Bill</button>
+                    <button class="btn-clear" onclick="settle('${table}')">Settle / Clear</button>
                 </div>
             </div>`;
     }
@@ -128,13 +126,13 @@ function printFinal(t) {
         <center><h2>INVOICE</h2><h1>${t}</h1><hr></center>
         <div style="font-size:14px; margin:20px 0;">${b.items.join('<br>')}</div>
         <hr><h2 style="display:flex; justify-content:space-between;"><span>Total:</span> <span>₹${b.total}</span></h2><hr>
-        <center><p>पधारने के लिए धन्यवाद!</p></center>
+        <center><p>Thank you for visiting!</p></center>
     </body></html>`);
     w.print(); w.close();
 }
 
 function settle(t) {
-    if (confirm("क्या " + t + " का पेमेंट हो गया है?")) {
+    if (confirm("Confirm payment and clear " + t + "?")) {
         delete linkedBills[t];
         save();
         loadOrders();
