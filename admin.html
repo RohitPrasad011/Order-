@@ -3,54 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Admin - KOT & Billing</title>
+    <title>POS Admin - Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* प्रिंट के लिए खास सेटिंग */
         @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; }
             .no-print { display: none !important; }
-            body { background: white !important; color: black !important; padding: 0; }
-            .order-card { 
-                border: 1px dashed black !important; 
-                box-shadow: none !important; 
-                width: 100% !important; 
-                border-radius: 0 !important;
-                background: white !important;
-                margin-bottom: 30px;
-            }
-            /* KOT मोड में अमाउंट छुपाना */
-            .kot-mode .bill-only { display: none !important; }
-            .kot-mode .kot-title { display: block !important; }
         }
-        .kot-title { display: none; text-align: center; font-weight: bold; border-bottom: 2px solid black; margin-bottom: 10px; }
+        .tab-active { border-bottom: 4px solid #ef4444; color: white; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-6 no-print">
-            <h1 class="text-2xl font-black italic uppercase text-red-600">POS Terminal</h1>
+    <div id="mainUI" class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black italic uppercase text-red-600">POS TERMINAL</h1>
             <button onclick="fetchOrders()" class="bg-slate-900 p-3 rounded-xl border border-slate-800"><i class="fas fa-sync-alt"></i></button>
         </header>
 
-        <div class="flex gap-8 mb-8 border-b border-slate-800 no-print">
-            <button onclick="switchTab('live')" id="tab-live" class="pb-4 text-sm font-black uppercase tab-active border-b-4 border-red-500">Live Orders</button>
+        <div class="flex gap-8 mb-8 border-b border-slate-800">
+            <button onclick="switchTab('live')" id="tab-live" class="pb-4 text-sm font-black uppercase tab-active">Live Orders</button>
             <button onclick="switchTab('history')" id="tab-history" class="pb-4 text-sm font-black uppercase text-slate-500">Accepted History</button>
         </div>
 
-        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
+        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
+
+    <div id="printArea" class="hidden"></div>
 
     <script>
         const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
         let currentTab = 'live';
-        let acceptedOrders = JSON.parse(localStorage.getItem('pos_accepted_history')) || [];
+        let acceptedOrders = JSON.parse(localStorage.getItem('pos_accepted_final')) || [];
 
         function switchTab(tab) {
             currentTab = tab;
-            document.getElementById('tab-live').className = tab === 'live' ? 'pb-4 text-sm font-black uppercase border-b-4 border-red-500' : 'pb-4 text-sm font-black uppercase text-slate-500';
-            document.getElementById('tab-history').className = tab === 'history' ? 'pb-4 text-sm font-black uppercase border-b-4 border-red-500' : 'pb-4 text-sm font-black uppercase text-slate-500';
+            document.getElementById('tab-live').className = tab === 'live' ? 'pb-4 text-sm font-black uppercase tab-active' : 'pb-4 text-sm font-black uppercase text-slate-500';
+            document.getElementById('tab-history').className = tab === 'history' ? 'pb-4 text-sm font-black uppercase tab-active' : 'pb-4 text-sm font-black uppercase text-slate-500';
             fetchOrders();
         }
 
@@ -58,76 +51,77 @@
             try {
                 const response = await fetch(PUBLISHED_URL + "&t=" + new Date().getTime());
                 const csvText = await response.text();
-                const rows = csvText.split('\n').filter(row => row.trim() !== "");
-                const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                const lines = csvText.split('\n').filter(l => l.trim() !== "");
                 
-                const timestampIdx = headers.indexOf("Timestamp");
-                const tableIdx = headers.indexOf("TABLE NO.");
-                const itemsIdx = headers.indexOf("ITEMS");
-                const totalIdx = headers.indexOf("TOTAL MOUNT");
+                // कॉलम की पहचान (Timestamp, TABLE NO., ITEMS, TOTAL MOUNT)
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                const tIdx = headers.indexOf("Timestamp");
+                const bIdx = headers.indexOf("TABLE NO.");
+                const iIdx = headers.indexOf("ITEMS");
+                const mIdx = headers.indexOf("TOTAL MOUNT");
 
                 const container = document.getElementById('ordersGrid');
                 container.innerHTML = "";
-                const dataRows = rows.slice(1).reverse();
+                const rows = lines.slice(1).reverse();
 
-                dataRows.forEach((row) => {
+                rows.forEach((row) => {
                     const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(c => c.replace(/"/g, ''));
-                    const time = cols[timestampIdx];
-                    const table = cols[tableIdx];
-                    const items = cols[itemsIdx]?.replace(/\|/g, '<br>').replace(/\\n/g, '<br>') || "No items";
-                    const total = cols[totalIdx] || "0";
+                    const time = cols[tIdx];
+                    const table = cols[bIdx];
+                    const items = cols[iIdx]?.replace(/\|/g, '<br>').replace(/\\n/g, '<br>') || "No items";
+                    const total = cols[mIdx] || "0";
                     const orderId = (time + table).replace(/\s+/g, '');
 
                     const isAccepted = acceptedOrders.includes(orderId);
 
                     if ((currentTab === 'live' && !isAccepted) || (currentTab === 'history' && isAccepted)) {
                         container.innerHTML += `
-                            <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-xl relative order-card-wrapper" id="${orderId}">
-                                <div class="kot-title">*** KITCHEN ORDER TICKET (KOT) ***</div>
-                                <h2 class="text-3xl font-black text-white leading-none mb-1">${table}</h2>
+                            <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-xl relative">
+                                <h2 class="text-3xl font-black text-white leading-none">${table}</h2>
                                 <p class="text-[9px] text-slate-500 font-bold uppercase mb-4">${time}</p>
-                                
-                                <div class="bg-black/30 rounded-2xl p-4 mb-4 border border-slate-800 text-sm italic text-slate-300">
-                                    ${items}
-                                </div>
-
-                                <div class="bill-only flex justify-between items-center mb-6 border-t border-slate-800 pt-4">
-                                    <span class="text-xs font-bold text-slate-500 uppercase italic">Total</span>
+                                <div class="bg-black/30 rounded-2xl p-4 mb-4 border border-slate-800 text-sm italic text-slate-300">${items}</div>
+                                <div class="flex justify-between items-center mb-6 border-t border-slate-800 pt-4 px-2">
+                                    <span class="text-xs font-bold text-slate-500 uppercase">Total</span>
                                     <span class="text-xl font-black text-green-400 font-mono italic">₹${total}</span>
                                 </div>
-
-                                <div class="flex flex-col gap-2 no-print">
+                                <div class="flex flex-col gap-2">
                                     <div class="flex gap-2">
-                                        <button onclick="printContent('${orderId}', 'kot')" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-lg">KOT</button>
-                                        <button onclick="printContent('${orderId}', 'bill')" class="flex-1 bg-white text-black py-3 rounded-xl font-black text-[10px] uppercase shadow-lg">BILL</button>
+                                        <button onclick="doPrint('${table}', '${items}', '${total}', 'KOT')" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-black text-[10px] uppercase">KOT</button>
+                                        <button onclick="doPrint('${table}', '${items}', '${total}', 'BILL')" class="flex-1 bg-white text-black py-3 rounded-xl font-black text-[10px] uppercase">Bill</button>
                                     </div>
-                                    ${!isAccepted ? `
-                                    <button onclick="moveToHistory('${orderId}')" class="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-500 transition-all">
-                                        Confirm & Done <i class="fas fa-check ml-1"></i>
-                                    </button>` : ''}
+                                    ${!isAccepted ? `<button onclick="moveToHistory('${orderId}')" class="w-full bg-green-600 text-white py-2 rounded-xl font-bold uppercase text-[10px]">Confirm & Done <i class="fas fa-check"></i></button>` : ''}
                                 </div>
                             </div>
                         `;
                     }
                 });
-            } catch (err) { console.error(err); }
+            } catch (e) { console.error(e); }
         }
 
-        function printContent(id, type) {
-            const wrapper = document.getElementById(id);
-            if (type === 'kot') {
-                document.body.classList.add('kot-mode');
-            } else {
-                document.body.classList.remove('kot-mode');
-            }
-            
-            // सिर्फ उस खास कार्ड को प्रिंट करने के लिए बाकी सब छुपाना (साधारण तरीका)
-            window.print();
+        function doPrint(table, items, total, type) {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <body style="font-family:monospace; width:300px; padding:20px;">
+                    <center>
+                        <h2>${type === 'KOT' ? 'KITCHEN ORDER' : 'CUSTOMER BILL'}</h2>
+                        <hr>
+                        <h3>${table}</h3>
+                    </center>
+                    <p style="font-size:14px;">${items}</p>
+                    ${type === 'BILL' ? `<hr><h3>TOTAL: ₹${total}</h3>` : ''}
+                    <hr>
+                    <center><p>Thank You!</p></center>
+                    <script>window.onload = function() { window.print(); window.close(); };<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
 
         function moveToHistory(id) {
             acceptedOrders.push(id);
-            localStorage.setItem('pos_accepted_history', JSON.stringify(acceptedOrders));
+            localStorage.setItem('pos_accepted_final', JSON.stringify(acceptedOrders));
             fetchOrders();
         }
 
