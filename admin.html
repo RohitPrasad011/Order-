@@ -3,154 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS - Manual Table Linking</title>
+    <title>POS - Full Menu Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .section-header { border-left: 4px solid #ef4444; padding-left: 12px; margin-bottom: 20px; font-weight: 900; text-transform: uppercase; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .item-btn { background: #1e293b; border: 1px solid #334155; padding: 12px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #cbd5e1; transition: 0.2s; }
+        .item-btn:hover { border-color: #3b82f6; background: #0f172a; }
+        .item-btn:active { transform: scale(0.95); background: #3b82f6; color: white; }
         @media print { .no-print { display: none !important; } }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto no-print">
         <header class="flex justify-between items-center mb-10 border-b border-slate-900 pb-6">
             <h1 class="text-3xl font-black italic text-red-600 uppercase">POS Admin</h1>
-            <button onclick="fetchOrders()" class="bg-red-600 hover:bg-red-500 p-4 rounded-2xl shadow-lg active:scale-95 transition-all flex flex-col items-center">
-                <i class="fas fa-sync-alt"></i>
-                <span class="text-[10px] font-bold mt-1">REFRESH DATA</span>
-            </button>
+            <div class="flex gap-4">
+                <button onclick="openManualModal()" class="bg-blue-600 hover:bg-blue-500 px-6 py-4 rounded-2xl shadow-lg font-bold text-xs">
+                    <i class="fas fa-plus mr-2"></i> MANUAL ENTRY
+                </button>
+                <button onclick="fetchOrders()" class="bg-red-600 hover:bg-red-500 p-4 rounded-2xl shadow-lg active:scale-95 transition-all">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
         </header>
 
-        <h2 class="section-header text-red-500 text-sm">1. New Incoming Orders (Review & Link)</h2>
-        <div id="incomingOrders" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-            </div>
+        <h2 class="section-header text-red-500 text-sm">1. New Incoming Orders</h2>
+        <div id="incomingOrders" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16"></div>
 
         <h2 class="section-header text-blue-500 text-sm">2. Final Billing Desk (Merged Tables)</h2>
-        <div id="billingDesk" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="billingDesk" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
+    <div id="manualModal" class="fixed inset-0 bg-black/95 hidden z-50 p-4 overflow-y-auto no-print">
+        <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 md:p-10 mt-5">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black italic text-white uppercase">Menu Selector</h2>
+                <button onclick="closeManualModal()" class="text-slate-500 text-3xl">&times;</button>
             </div>
+            
+            <input type="text" id="manualTableName" placeholder="TABLE NO (e.g. Table 01)" class="w-full bg-black border border-slate-800 p-4 rounded-2xl mb-8 text-white outline-none focus:border-red-600 font-black text-center text-xl">
+
+            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Momos (Veg/Non-Veg)</h3>
+            <div class="menu-grid mb-8">
+                <button onclick="addItem('Veg Momos(5pc)', 50)" class="item-btn">Veg Momos <br> ₹50</button>
+                <button onclick="addItem('Chicken Momos(5pc)', 70)" class="item-btn">Chkn Momos <br> ₹70</button>
+                <button onclick="addItem('Paneer Momos(5pc)', 80)" class="item-btn">Pnr Momos <br> ₹80</button>
+                <button onclick="addItem('Kurkure Momos', 120)" class="item-btn">Kurkure <br> ₹120</button>
+            </div>
+
+            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Main Course</h3>
+            <div class="menu-grid mb-8">
+                <button onclick="addItem('Veg Burger', 70)" class="item-btn">Veg Burger <br> ₹70</button>
+                <button onclick="addItem('Chicken Burger', 110)" class="item-btn">Chkn Burger <br> ₹110</button>
+                <button onclick="addItem('Margherita Pizza', 190)" class="item-btn">Margherita <br> ₹190</button>
+                <button onclick="addItem('Chicken Pizza', 260)" class="item-btn">Chkn Pizza <br> ₹260</button>
+            </div>
+
+            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Beverages</h3>
+            <div class="menu-grid mb-8">
+                <button onclick="addItem('Cold Coffee', 90)" class="item-btn">Cold Coffee <br> ₹90</button>
+                <button onclick="addItem('Oreo Shake', 120)" class="item-btn">Oreo Shake <br> ₹120</button>
+                <button onclick="addItem('Virgin Mojito', 90)" class="item-btn">Mojito <br> ₹90</button>
+                <button onclick="addItem('Cold Drink', 40)" class="item-btn">Cold Drink <br> ₹40</button>
+            </div>
+
+            <div id="draftList" class="bg-black/50 p-6 rounded-3xl mb-8 text-sm text-slate-400 min-h-[80px] border border-slate-800 shadow-inner">
+                List is empty...
+            </div>
+
+            <button onclick="confirmManualLink()" class="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-green-500 shadow-xl transition-all">Add to Table Bill</button>
+        </div>
     </div>
 
     <script>
         const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-
         let linkedBills = JSON.parse(localStorage.getItem('pos_manual_link_data')) || {};
         let linkedIds = JSON.parse(localStorage.getItem('pos_linked_ids')) || [];
+        let draft = { items: [], total: 0 };
+
+        function openManualModal() { document.getElementById('manualModal').classList.remove('hidden'); }
+        function closeManualModal() { 
+            document.getElementById('manualModal').classList.add('hidden');
+            draft = { items: [], total: 0 };
+            document.getElementById('draftList').innerText = "List is empty...";
+        }
+
+        function addItem(name, price) {
+            draft.items.push(name);
+            draft.total += price;
+            document.getElementById('draftList').innerHTML = `<div class='text-white font-bold'>${draft.items.join(', ')}</div><div class='mt-4 text-green-400 font-black'>Total: ₹${draft.total}</div>`;
+        }
+
+        function confirmManualLink() {
+            const tName = document.getElementById('manualTableName').value.toUpperCase();
+            if(!tName || draft.items.length === 0) return alert("Enter Table Name & Add Items");
+            if (!linkedBills[tName]) linkedBills[tName] = { items: [], total: 0 };
+            linkedBills[tName].items.push(draft.items.join(', '));
+            linkedBills[tName].total += draft.total;
+            saveAndRefresh();
+            closeManualModal();
+        }
 
         async function fetchOrders() {
             try {
                 const response = await fetch(`${SHEET_URL}&cb=${Date.now()}`);
                 const csvData = await response.text();
                 const lines = csvData.split('\n').filter(l => l.trim() !== "");
-                
                 const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                
                 const tIdx = headers.indexOf("Timestamp");
                 const bIdx = headers.indexOf("TABLE NO.");
                 const iIdx = headers.indexOf("ITEMS");
                 const mIdx = headers.indexOf("TOTAL MOUNT");
 
-                const incomingContainer = document.getElementById('incomingOrders');
-                incomingContainer.innerHTML = "";
+                const container = document.getElementById('incomingOrders');
+                container.innerHTML = "";
 
-                const rows = lines.slice(1).reverse();
-                rows.forEach(row => {
+                lines.slice(1).reverse().forEach(row => {
                     const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(c => c.replace(/"/g, ''));
                     const id = (cols[tIdx] + cols[bIdx]).replace(/\s+/g, '');
-                    
-                    // FIXED: Removed the time filter so old orders show up again
                     if (!linkedIds.includes(id)) {
-                        renderIncomingCard(cols[bIdx], cols[iIdx], cols[mIdx], id);
+                        const cleanItems = cols[iIdx].replace(/\|/g, '<br>');
+                        container.innerHTML += `
+                            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl border-l-4 border-l-red-600 shadow-xl">
+                                <h3 class="font-black text-xl text-white mb-2 italic">${cols[bIdx]}</h3>
+                                <div class="text-[11px] text-slate-400 mb-5 h-16 overflow-y-auto italic border-t border-white/5 pt-2">${cleanItems}</div>
+                                <button onclick="linkToBill('${cols[bIdx]}', '${encodeURIComponent(cleanItems)}', ${cols[mIdx]}, '${id}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Link Order</button>
+                            </div>`;
                     }
                 });
-                renderBillingDesk();
+                renderDesk();
             } catch (e) { console.error("Sync Error"); }
         }
 
-        function renderIncomingCard(table, items, price, id) {
-            const container = document.getElementById('incomingOrders');
-            const formattedItems = items.replace(/\|/g, '<br>').replace(/\\n/g, '<br>');
-            container.innerHTML += `
-                <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl border-l-4 border-l-red-600">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-black text-xl text-white italic">${table || 'Table ?'}</h3>
-                        <span class="text-[10px] font-mono text-green-400">₹${price || 0}</span>
-                    </div>
-                    <div class="text-[11px] text-slate-400 mb-5 h-20 overflow-y-auto italic border-t border-white/5 pt-2">${formattedItems}</div>
-                    <button onclick="linkToBill('${table}', '${encodeURIComponent(formattedItems)}', ${price}, '${id}')" 
-                            class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                        Link to Table <i class="fas fa-plus-circle ml-1"></i>
-                    </button>
-                </div>
-            `;
-        }
-
-        function linkToBill(table, encodedItems, price, id) {
-            const items = decodeURIComponent(encodedItems);
-            if (!linkedBills[table]) {
-                linkedBills[table] = { items: [], total: 0 };
-            }
+        function linkToBill(table, encItems, price, id) {
+            const items = decodeURIComponent(encItems);
+            if (!linkedBills[table]) linkedBills[table] = { items: [], total: 0 };
             linkedBills[table].items.push(items);
             linkedBills[table].total += parseFloat(price) || 0;
-            
             linkedIds.push(id);
-            saveData();
-            fetchOrders();
+            saveAndRefresh();
         }
 
-        function renderBillingDesk() {
+        function renderDesk() {
             const desk = document.getElementById('billingDesk');
             desk.innerHTML = "";
-            
             Object.keys(linkedBills).forEach(table => {
                 const data = linkedBills[table];
                 desk.innerHTML += `
                     <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2.5rem] shadow-2xl border-t-4 border-t-blue-500">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-3xl font-black text-white italic">${table}</h2>
-                            <span class="text-[10px] bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full font-bold uppercase">Merged Bill</span>
-                        </div>
-                        <div class="bg-black/50 rounded-2xl p-5 mb-5 text-sm text-slate-300 space-y-3 max-h-48 overflow-y-auto border border-slate-800">
+                        <h2 class="text-3xl font-black text-white italic mb-4">${table}</h2>
+                        <div class="bg-black/50 rounded-2xl p-4 mb-4 text-sm text-slate-300 space-y-3 max-h-40 overflow-y-auto border border-slate-800">
                             ${data.items.map(i => `<div class="border-b border-white/5 pb-2 last:border-0">${i}</div>`).join('')}
                         </div>
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-6 px-2">
                             <span class="text-xs font-bold text-slate-500 uppercase">Total</span>
-                            <span class="text-2xl font-black text-green-400 font-mono">₹${data.total}</span>
+                            <span class="text-2xl font-black text-green-400 font-mono italic">₹${data.total}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <button onclick="printFinalBill('${table}')" class="bg-white text-black py-4 rounded-xl font-black text-[10px] uppercase">Print Bill</button>
-                            <button onclick="settleTable('${table}')" class="bg-green-600 text-white py-4 rounded-xl font-black text-[10px] uppercase">Settle</button>
+                            <button onclick="printBill('${table}')" class="bg-white text-black py-4 rounded-xl font-black text-[10px] uppercase shadow-lg">Print Bill</button>
+                            <button onclick="settle('${table}')" class="bg-green-600 text-white py-4 rounded-xl font-black text-[10px] uppercase shadow-lg">Settle</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
         }
 
-        function printFinalBill(table) {
+        function printBill(table) {
             const data = linkedBills[table];
-            const printWin = window.open('', '_blank', 'width=400,height=600');
-            printWin.document.write(`
-                <html><body style="font-family:monospace;padding:30px;">
-                <center><h2>FINAL INVOICE</h2><h1>${table}</h1><hr></center>
-                <div style="font-size:14px;margin:20px 0;">${data.items.join('<br>')}</div>
-                <hr><h2>TOTAL: ₹${data.total}</h2><hr>
-                <center><p>THANK YOU!</p></center>
-                <script>window.onload=function(){window.print();window.close();}<\/script></body></html>
-            `);
-            printWin.document.close();
+            const win = window.open('', '_blank', 'width=400,height=600');
+            win.document.write(`<html><body style="font-family:monospace;padding:30px;"><center><h2>INVOICE</h2><h1>${table}</h1><hr></center><div style="font-size:14px;margin:20px 0;">${data.items.join('<br>')}</div><hr><h2>TOTAL: ₹${data.total}</h2><hr><script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
+            win.document.close();
         }
 
-        function settleTable(table) {
-            if (confirm("Settle Table " + table + "?")) {
-                delete linkedBills[table];
-                saveData();
-                fetchOrders();
-            }
-        }
-
-        function saveData() {
-            localStorage.setItem('pos_manual_link_data', JSON.stringify(linkedBills));
-            localStorage.setItem('pos_linked_ids', JSON.stringify(linkedIds));
-        }
+        function settle(table) { if (confirm("Clear " + table + "?")) { delete linkedBills[table]; saveAndRefresh(); } }
+        function saveAndRefresh() { localStorage.setItem('pos_manual_link_data', JSON.stringify(linkedBills)); localStorage.setItem('pos_linked_ids', JSON.stringify(linkedIds)); fetchOrders(); }
 
         fetchOrders();
     </script>
