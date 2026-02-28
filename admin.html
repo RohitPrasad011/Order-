@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Royal Food POS - Notifications</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Royal Food POS - A7 Final Fix</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
+/* --- App UI --- */
 body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
 .card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; }
 .selected-card { border:2px solid #3b82f6 !important; background: #1e293b !important; }
@@ -15,26 +16,45 @@ button { font-weight:700; font-size:13px; height:42px; border-radius:10px; curso
 .btn-kot { background:#ea580c; color:#fff; }
 .btn-bill { background:#3b82f6; color:#fff; }
 .btn-merge { background:#10b981; color:#fff; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; display:none; height:55px; z-index:100; }
-pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; font-family:monospace; font-size:14px; color:#cbd5e1; border:1px solid #1f2937; }
+pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; font-family:monospace; font-size:14px; color:#cbd5e1; border:1px solid #1f2937; pointer-events:none; }
 
+/* 🔴🔥 PRINT ENGINE FIX - NO BLACK, FULL WIDTH 🔥🔴 */
 @media print {
-  body * { visibility:hidden; }
-  #printSection, #printSection * { visibility:visible !important; display: block !important; }
-  #printSection { position:absolute; left:0; top:0; width:100%; background:#fff !important; color:#000 !important; padding: 10px; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { margin: 0; size: auto; }
+    html, body { background: #fff !important; color: #000 !important; margin: 0; padding: 0; width: 100%; }
+    body * { visibility: hidden !important; display: none !important; }
+    
+    #printSection, #printSection * { 
+        visibility: visible !important; 
+        display: block !important; 
+        background: white !important; 
+        color: black !important;
+    }
+    
+    #printSection { 
+        position: absolute; left: 0; top: 0; width: 100% !important; 
+        padding: 10px !important; margin: 0 !important;
+        box-sizing: border-box;
+    }
+    
+    .print-line { border-top: 1px dashed black !important; margin: 5px 0; width: 100%; }
+    
+    /* ज़ूम फिक्स ताकि कोने में छोटा न दिखे */
+    #printSection div { width: 100% !important; font-size: 14px !important; }
 }
-#printSection { display:none; }
+
+#printSection { display: none; }
 .hidden { display: none; }
 </style>
 </head>
 
-<body class="p-4 pb-32" onclick="enableAudio()">
+<body class="p-4 pb-32">
 
 <header class="flex justify-between mb-6 sticky top-0 bg-[#05070a] py-2 z-50">
-<h1 class="text-xl font-black text-white">ROYAL FOOD <span class="text-orange-500">POS</span></h1>
+<h1 class="text-xl font-black text-white italic">ROYAL FOOD <span class="text-orange-500">POS</span></h1>
 <div class="flex gap-2">
-<button onclick="toggleMergeMode()" id="mBtn" class="bg-gray-700 px-3 rounded">Merge</button>
-<button onclick="loadOrders()" class="bg-gray-800 px-3 rounded text-orange-400">Refresh</button>
+<button onclick="toggleMergeMode()" id="mBtn" class="bg-gray-700 px-3 rounded text-[10px] uppercase">Merge</button>
+<button onclick="loadOrders()" class="bg-gray-800 px-3 rounded text-orange-400 text-[10px] uppercase">Refresh</button>
 </div>
 </header>
 
@@ -43,17 +63,14 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
 <hr class="my-6 border-gray-800">
 
 <button onclick="toggleHistory()" class="w-full flex items-center gap-2 bg-gray-900 border border-gray-800 p-3 rounded-xl mb-4">
-    <span class="flex-1 text-left text-gray-400 text-sm font-bold uppercase tracking-widest">History (Today)</span>
-    <span id="hIcon" class="text-gray-500">▼</span>
+    <span class="flex-1 text-left text-gray-400 text-[10px] font-bold uppercase tracking-widest text-center">Order History ▼</span>
 </button>
 
 <div id="historyList" class="hidden"></div>
 
-<button onclick="printMerged()" id="mergeBtn" class="btn-merge">PRINT MERGED BILL (₹<span id="mergeTotal">0</span>)</button>
+<button onclick="printMerged()" id="mergeBtn" class="btn-merge font-black italic uppercase">PRINT MERGED BILL (₹<span id="mergeTotal">0</span>)</button>
 
 <div id="printSection"></div>
-
-<audio id="orderSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
 <script>
 const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
@@ -62,169 +79,162 @@ const HISTORY_KEY="royal_food_final_v30";
 let allOrders=[];
 let selected=[];
 let mergeMode=false;
-let history=JSON.parse(localStorage.getItem(HISTORY_KEY))||[];
-let lastOrderCount = 0;
-let audioAllowed = false;
-
-// आवाज़ चालू करने के लिए फंक्शन
-function enableAudio() { audioAllowed = true; }
+let history=JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
 
 function parseCSV(text){
-const rows=[]; let row=[],cell="",inside=false;
-for(let i=0;i<text.length;i++){
-let c=text[i];
-if(c=='"'){inside=!inside}
-else if(c==","&&!inside){row.push(cell);cell=""}
-else if((c=="\n"||c=="\r")&&!inside){
-if(cell||row.length){row.push(cell);rows.push(row);row=[];cell=""}
-}else{cell+=c}
-}
-if(cell||row.length){row.push(cell);rows.push(row)}
-return rows;
+    const rows=[]; let row=[],cell="",inside=false;
+    for(let i=0;i<text.length;i++){
+        let c=text[i];
+        if(c=='"'){inside=!inside}
+        else if(c==","&&!inside){row.push(cell);cell=""}
+        else if((c=="\n"||c=="\r")&&!inside){
+            if(cell||row.length){row.push(cell);rows.push(row);row=[];cell=""}
+        }else{cell+=c}
+    }
+    if(cell||row.length){row.push(cell);rows.push(row)}
+    return rows;
 }
 
 async function loadOrders(){
-try {
-    const res=await fetch(SHEET_URL+"&t="+Date.now());
-    const data=await res.text();
-    const newRows = parseCSV(data).filter(r=>r[1]&&r[1].toLowerCase()!=="table");
-    
-    // 🔥 नोटिफिकेशन लॉजिक: अगर नए ऑर्डर आए हैं
-    if (lastOrderCount > 0 && newRows.length > lastOrderCount) {
-        notifyNewOrder();
-    }
-    
-    lastOrderCount = newRows.length;
-    allOrders = newRows;
-    render();
-} catch(e) { console.log("Error loading orders"); }
-}
-
-function notifyNewOrder() {
-    // 1. आवाज़ बजाएं
-    if (audioAllowed) {
-        document.getElementById("orderSound").play().catch(e => console.log("Audio block"));
-    }
-    // 2. ब्राउज़र वाइब्रेशन (अगर सपोर्टेड हो)
-    if (navigator.vibrate) { navigator.vibrate([200, 100, 200]); }
+    try {
+        const res=await fetch(SHEET_URL+"&t="+Date.now());
+        const data=await res.text();
+        allOrders=parseCSV(data).filter(r=>r[1]&&r[1].toLowerCase()!=="table");
+        render();
+    } catch(e) { console.log("Fetch error"); }
 }
 
 function render(){
-const orderDiv=document.getElementById("orderList");
-const historyDiv=document.getElementById("historyList");
-orderDiv.innerHTML=""; historyDiv.innerHTML="";
+    const orderDiv=document.getElementById("orderList");
+    const historyDiv=document.getElementById("historyList");
+    orderDiv.innerHTML=""; historyDiv.innerHTML="";
 
-allOrders.slice().reverse().forEach((row)=>{
-const time=row[0], table=row[1], items=row[2]||"", total=row[3]||"0";
-const realIndex = allOrders.findIndex(r => r[0] === time && r[1] === table);
-const id=(table+time).replace(/\s/g,"");
-const isHistory=history.includes(id);
-const isSelected=selected.includes(realIndex);
+    allOrders.slice().reverse().forEach((row)=>{
+        const time=row[0], table=row[1], items=row[2]||"", total=row[3]||"0";
+        const realIndex = allOrders.findIndex(r => r[0] === time && r[1] === table);
+        const id=(table+time).replace(/\s/g,"");
+        const isHistory=history.includes(id);
+        const isSelected=selected.includes(realIndex);
 
-const card=document.createElement("div");
-card.className=`card ${isHistory?"history-card":""} ${isSelected?"selected-card":""}`;
-card.onclick=()=>selectCard(realIndex);
+        const card=document.createElement("div");
+        card.className=`card ${isHistory?"history-card":""} ${isSelected?"selected-card":""}`;
+        card.onclick=()=>selectCard(realIndex);
 
-card.innerHTML=`
-<div class="flex justify-between mb-2">
-<span class="font-bold text-lg italic uppercase">${table}</span>
-<span class="text-green-400 font-bold text-xl">₹${total}</span>
-</div>
-<pre>${items.replace(/\\n/g,"\n")}</pre>
-${!mergeMode?`
-<div class="flex gap-2 mt-3">
-<button class="btn-kot flex-1" onclick="event.stopPropagation();printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT</button>
-<button class="btn-bill flex-1" onclick="event.stopPropagation();${isHistory?`printDoc('BILL','${table}','${encodeURIComponent(items)}','${total}')`:`printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')`}">${isHistory?"REPRINT":"BILL"}</button>
-</div>`:""}
-`;
+        card.innerHTML=`
+        <div class="flex justify-between mb-2 pointer-events-none">
+            <span class="font-bold text-lg italic uppercase">${table}</span>
+            <span class="text-green-400 font-bold text-xl">₹${total}</span>
+        </div>
+        <pre>${items.replace(/\\n/g,"\n")}</pre>
+        ${!mergeMode?`
+        <div class="flex gap-2 mt-3">
+            <button class="btn-kot flex-1" onclick="event.stopPropagation();printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT</button>
+            <button class="btn-bill flex-1" onclick="event.stopPropagation();${isHistory?`printDoc('BILL','${table}','${encodeURIComponent(items)}','${total}')`:`printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')`}">${isHistory?"REPRINT":"BILL"}</button>
+        </div>`:""}
+        `;
 
-if(isHistory) historyDiv.appendChild(card);
-else orderDiv.appendChild(card);
-});
-updateMergeUI();
+        if(isHistory) historyDiv.appendChild(card);
+        else orderDiv.appendChild(card);
+    });
+    updateMergeUI();
 }
 
 function toggleHistory(){
     const hList = document.getElementById("historyList");
-    const hIcon = document.getElementById("hIcon");
     hList.classList.toggle("hidden");
-    hIcon.innerText = hList.classList.contains("hidden") ? "▼" : "▲";
 }
 
 function toggleMergeMode(){
-mergeMode=!mergeMode;
-const mBtn = document.getElementById("mBtn");
-mBtn.classList.toggle("bg-red-600");
-mBtn.innerText = mergeMode ? "Cancel" : "Merge";
-if(!mergeMode) selected=[];
-render();
+    mergeMode=!mergeMode;
+    const mBtn = document.getElementById("mBtn");
+    mBtn.classList.toggle("bg-red-600");
+    mBtn.innerText = mergeMode ? "Cancel" : "Merge";
+    if(!mergeMode) selected=[];
+    render();
 }
 
 function selectCard(i){
-if(!mergeMode)return;
-const idx=selected.indexOf(i);
-if(idx>-1) selected.splice(idx,1);
-else selected.push(i);
-render();
+    if(!mergeMode)return;
+    const idx=selected.indexOf(i);
+    if(idx>-1) selected.splice(idx,1);
+    else selected.push(i);
+    render();
 }
 
 function updateMergeUI(){
-const btn=document.getElementById("mergeBtn");
-const totalDisp=document.getElementById("mergeTotal");
-if(mergeMode&&selected.length>0){
-let sum=selected.reduce((a,i)=>a+(parseInt(allOrders[i][3])||0),0);
-totalDisp.innerText=sum;
-btn.style.display="block";
-}else{
-btn.style.display="none";
-}
+    const btn=document.getElementById("mergeBtn");
+    const totalDisp=document.getElementById("mergeTotal");
+    if(mergeMode&&selected.length>0){
+        let sum=selected.reduce((a,i)=>a+(parseInt(allOrders[i][3])||0),0);
+        totalDisp.innerText=sum;
+        btn.style.display="block";
+    }else{
+        btn.style.display="none";
+    }
 }
 
 function printMerged(){
-let items="",sum=0,tables=[];
-selected.forEach(i=>{
-items+=allOrders[i][2]+"\n";
-sum+=parseInt(allOrders[i][3])||0;
-if(!tables.includes(allOrders[i][1]))tables.push(allOrders[i][1]);
-});
-printDoc("BILL",tables.join("+"),encodeURIComponent(items),sum);
-toggleMergeMode();
+    let items="",sum=0,tables=[];
+    selected.sort((a,b)=>a-b).forEach(i=>{
+        items+=allOrders[i][2]+"\n";
+        sum+=parseInt(allOrders[i][3])||0;
+        if(!tables.includes(allOrders[i][1]))tables.push(allOrders[i][1]);
+    });
+    printDoc("BILL",tables.join("+"),encodeURIComponent(items),sum);
+    toggleMergeMode();
 }
 
 function printBill(id,table,items,total){
-printDoc("BILL",table,items,total);
-if(!history.includes(id)){
-history.push(id);
-localStorage.setItem(HISTORY_KEY,JSON.stringify(history));
-}
-setTimeout(loadOrders,1000);
+    printDoc("BILL",table,items,total);
+    if(!history.includes(id)){
+        history.push(id);
+        localStorage.setItem(HISTORY_KEY,JSON.stringify(history));
+    }
+    setTimeout(loadOrders,1000);
 }
 
 function printDoc(type,table,itemsEnc,total){
-const items=decodeURIComponent(itemsEnc).replace(/\\n/g,"\n");
-const area=document.getElementById("printSection");
+    const items=decodeURIComponent(itemsEnc).replace(/\\n/g,"\n");
+    const area=document.getElementById("printSection");
 
-area.innerHTML=`
-<div style="width:260px;padding:10px;font-family:monospace;color:black;background:white;">
-<center><b style="font-size:18px;">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
-<hr style="border:1px dashed black">
-<b>${type}</b> | Table: ${table}<br>
-${new Date().toLocaleString()}
-<hr style="border:1px dashed black">
-<div style="white-space:pre-wrap; font-size:14px;">${items}</div>
-${type==="BILL"?`<hr style="border:1px dashed black"><div style="text-align:right;font-size:18px;"><b>TOTAL: ₹${total}</b></div>`:""}
-<hr style="border:1px dashed black">
-<center>Thank You 🙏 Visit Again!</center>
-</div>
-`;
+    area.innerHTML=`
+    <div style="width:100%; max-width:260px; color:black !important; background:white !important; font-family:monospace;">
+        <center>
+            <b style="font-size:18px;">ROYAL FOOD CORNER</b><br>
+            <small>Asansol, West Bengal</small>
+        </center>
+        <div class="print-line" style="border-top:1px dashed black !important; margin:5px 0;"></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px;">
+            <b>${type}</b>
+            <b>Table: ${table}</b>
+        </div>
+        <div style="font-size:10px;">${new Date().toLocaleString()}</div>
+        <div class="print-line" style="border-top:1px dashed black !important; margin:5px 0;"></div>
 
-area.style.display="block";
-window.print();
-setTimeout(()=>{ area.style.display="none"; area.innerHTML=""; },1000);
+        <div style="font-size:14px; line-height:1.4; white-space:pre-wrap; margin:10px 0;">${items}</div>
+
+        ${type==="BILL" ? `
+        <div class="print-line" style="border-top:1px dashed black !important; margin:5px 0;"></div>
+        <div style="display:flex; justify-content:space-between; font-size:20px; font-weight:bold;">
+            <span>TOTAL</span>
+            <span>₹${total}</span>
+        </div>` : ""}
+
+        <div class="print-line" style="border-top:1px dashed black !important; margin:10px 0 5px 0;"></div>
+        <center>
+            <b style="font-size:12px;">Thank You 🙏 Visit Again!</b><br>
+            <small style="font-size:9px;">Insta: @rpwebservice</small>
+        </center>
+    </div>
+    `;
+
+    area.style.display="block";
+    window.print();
+    setTimeout(()=>{ area.style.display="none"; area.innerHTML=""; },1000);
 }
 
 loadOrders();
-setInterval(loadOrders, 10000); // हर 10 सेकंड में चेक करेगा
+setInterval(loadOrders,15000);
 </script>
 </body>
 </html>
