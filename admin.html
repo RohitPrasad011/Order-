@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Royal Food POS - Thermal Fixed</title>
+<title>Royal Food POS - Pro Fixed</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-/* --- App UI (No changes here) --- */
+/* --- App UI (Screen Mode) --- */
 body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
 .card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; }
 .selected-card { border:2px solid #3b82f6 !important; background: #1e293b !important; }
@@ -18,19 +18,21 @@ button { font-weight:700; font-size:13px; height:42px; border-radius:10px; curso
 .btn-merge { background:#10b981; color:#fff; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; display:none; height:55px; z-index:100; }
 pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; font-family:monospace; font-size:14px; color:#cbd5e1; border:1px solid #1f2937; pointer-events:none; }
 
-/* 🔴🔥 FINAL PAPER SIZE ADJUSTMENT (FOR A7/58mm) 🔥🔴 */
+/* 🔴🔥 ULTIMATE THERMAL PRINT FIX (A7/58mm) 🔥🔴 */
 @media print {
     @page { 
         margin: 0 !important; 
-        size: auto; /* थर्मल प्रिंटर के लिए सबसे सुरक्षित */
+        size: auto; 
     }
     html, body { 
         background: #fff !important; 
         color: #000 !important; 
-        width: 100% !important; 
+        width: 100% !important;
+        height: auto !important;
         margin: 0 !important; 
         padding: 0 !important; 
     }
+    /* Hide everything except print area */
     body * { visibility: hidden !important; display: none !important; }
     
     #printSection, #printSection * { 
@@ -44,7 +46,7 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
         position: absolute; 
         left: 0; 
         top: 0; 
-        width: 58mm !important; /* थर्मल प्रिंटर की स्टैंडर्ड चौड़ाई */
+        width: 58mm !important; /* Standard Thermal Width */
         padding: 2mm !important; 
         margin: 0 !important;
         box-sizing: border-box;
@@ -52,7 +54,8 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
     }
     
     .p-line { border-top: 1px dashed black !important; margin: 3px 0; width: 100%; }
-    .bill-text { font-size: 13px !important; line-height: 1.2 !important; font-weight: 500 !important; }
+    .bill-text { font-size: 12px !important; line-height: 1.2 !important; font-family: monospace !important; }
+    center b { font-size: 15px !important; }
 }
 
 #printSection { display: none; }
@@ -63,17 +66,17 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
 <body class="p-4 pb-32">
 
 <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a] py-2 z-50">
-  <h1 class="text-xl font-black text-white italic">ROYAL FOOD <span class="text-orange-500">POS</span></h1>
+  <h1 class="text-xl font-black text-white italic">ROYAL FOOD <span class="text-orange-500 font-bold">POS</span></h1>
   <div class="flex gap-2">
     <button onclick="toggleMergeMode()" id="mBtn" class="bg-gray-700 px-3 rounded text-[10px] uppercase">Merge</button>
-    <button onclick="loadOrders()" class="bg-gray-800 px-3 rounded text-orange-400 text-[10px] uppercase border border-gray-700">Refresh</button>
+    <button onclick="loadOrders()" class="bg-gray-800 px-3 rounded text-orange-400 text-[10px] border border-gray-700 uppercase">Refresh</button>
   </div>
 </header>
 
 <div id="orderList"></div>
 
-<button onclick="toggleHistory()" class="w-full flex items-center gap-2 bg-gray-900 border border-gray-800 p-3 rounded-xl mb-4 mt-6">
-    <span class="flex-1 text-center text-gray-500 text-[10px] font-bold uppercase tracking-widest">History ▼</span>
+<button onclick="toggleHistory()" class="w-full flex items-center gap-2 bg-gray-900 border border-gray-800 p-3 rounded-xl mb-4 mt-8">
+    <span class="flex-1 text-center text-gray-500 text-[10px] font-bold uppercase tracking-widest">Order History ▼</span>
 </button>
 <div id="historyList" class="hidden"></div>
 
@@ -109,7 +112,7 @@ async function loadOrders(){
         const res=await fetch(SHEET_URL+"&t="+Date.now());
         const data=await res.text();
         const rows = parseCSV(data).filter(r=>r[1]&&r[1].toLowerCase()!=="table");
-        allOrders = rows.slice(-50); // Speed optimization
+        allOrders = rows.slice(-50); // Optimization for speed
         render();
     } catch(e) { console.log("Refresh failed"); }
 }
@@ -132,7 +135,7 @@ function render(){
 
         card.innerHTML=`
         <div class="flex justify-between mb-2">
-            <span class="font-bold text-lg italic uppercase">${table}</span>
+            <span class="font-bold text-lg italic uppercase text-white">${table}</span>
             <span class="text-green-400 font-bold text-xl">₹${total}</span>
         </div>
         <pre>${items.replace(/\\n/g,"\n")}</pre>
@@ -192,7 +195,6 @@ function printBill(id,table,items,total){
     setTimeout(loadOrders,1000);
 }
 
-// 🔴🔥 THERMAL PRINT ADAPTATION 🔥🔴
 function printDoc(type,table,itemsEnc,total){
     const items=decodeURIComponent(itemsEnc).replace(/\\n/g,"\n");
     const area=document.getElementById("printSection");
@@ -200,24 +202,24 @@ function printDoc(type,table,itemsEnc,total){
     area.innerHTML = `
     <div style="width:52mm; font-family:monospace; color:black; background:white;">
         <center>
-            <b style="font-size:16px;">ROYAL FOOD CORNER</b><br>
+            <b style="font-size:15px;">ROYAL FOOD CORNER</b><br>
             <small style="font-size:9px;">Asansol, West Bengal</small>
         </center>
-        <div class="p-line" style="border-top:1px dashed black; margin:3px 0;"></div>
+        <div class="p-line" style="border-top:1px dashed black; margin:4px 0;"></div>
         <div style="display:flex; justify-content:space-between; font-size:12px;">
             <b>${type}</b>
             <b>Table: ${table}</b>
         </div>
         <div style="font-size:9px;">${new Date().toLocaleString()}</div>
-        <div class="p-line" style="border-top:1px dashed black; margin:3px 0;"></div>
+        <div class="p-line" style="border-top:1px dashed black; margin:4px 0;"></div>
         <div class="bill-text" style="white-space:pre-wrap; font-size:12px; margin:5px 0;">${items}</div>
         ${total ? `
-        <div class="p-line" style="border-top:1px dashed black; margin:3px 0;"></div>
-        <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:bold;">
+        <div class="p-line" style="border-top:1px dashed black; margin:4px 0;"></div>
+        <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:bold;">
             <span>TOTAL</span>
             <span>₹${total}</span>
         </div>` : ""}
-        <div class="p-line" style="border-top:1px dashed black; margin:5px 0;"></div>
+        <div class="p-line" style="border-top:1px dashed black; margin:4px 0;"></div>
         <center>
             <b style="font-size:10px;">Thank You 🙏 Visit Again!</b><br>
             <small style="font-size:8px;">Insta: @rpwebservice</small>
