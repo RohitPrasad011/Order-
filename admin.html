@@ -1,187 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS - Full Menu Terminal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .section-header { border-left: 4px solid #ef4444; padding-left: 12px; margin-bottom: 20px; font-weight: 900; text-transform: uppercase; }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-        .item-btn { background: #1e293b; border: 1px solid #334155; padding: 12px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #cbd5e1; transition: 0.2s; }
-        .item-btn:hover { border-color: #3b82f6; background: #0f172a; }
-        .item-btn:active { transform: scale(0.95); background: #3b82f6; color: white; }
-        @media print { .no-print { display: none !important; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-7xl mx-auto no-print">
-        <header class="flex justify-between items-center mb-10 border-b border-slate-900 pb-6">
-            <h1 class="text-3xl font-black italic text-red-600 uppercase">POS Admin</h1>
-            <div class="flex gap-4">
-                <button onclick="openManualModal()" class="bg-blue-600 hover:bg-blue-500 px-6 py-4 rounded-2xl shadow-lg font-bold text-xs">
-                    <i class="fas fa-plus mr-2"></i> MANUAL ENTRY
-                </button>
-                <button onclick="fetchOrders()" class="bg-red-600 hover:bg-red-500 p-4 rounded-2xl shadow-lg active:scale-95 transition-all">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
-        </header>
+<body class="bg-black text-white p-6">
 
-        <h2 class="section-header text-red-500 text-sm">1. New Incoming Orders</h2>
-        <div id="incomingOrders" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16"></div>
+<script>
+// ===== LOGIN SYSTEM =====
+const ADMIN_ID = "Rohitprasad";
+const ADMIN_PASS = "00000000";
 
-        <h2 class="section-header text-blue-500 text-sm">2. Final Billing Desk (Merged Tables)</h2>
-        <div id="billingDesk" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    </div>
+if(!sessionStorage.getItem("adminLogin")){
+    const id = prompt("Enter Admin ID:");
+    const pass = prompt("Enter Password:");
+    if(id !== ADMIN_ID || pass !== ADMIN_PASS){
+        document.body.innerHTML="<h1 style='color:red;text-align:center;margin-top:50px'>Access Denied</h1>";
+        throw new Error("Unauthorized");
+    }
+    sessionStorage.setItem("adminLogin","true");
+}
+</script>
 
-    <div id="manualModal" class="fixed inset-0 bg-black/95 hidden z-50 p-4 overflow-y-auto no-print">
-        <div class="max-w-4xl mx-auto bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 md:p-10 mt-5">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black italic text-white uppercase">Menu Selector</h2>
-                <button onclick="closeManualModal()" class="text-slate-500 text-3xl">&times;</button>
-            </div>
-            
-            <input type="text" id="manualTableName" placeholder="TABLE NO (e.g. Table 01)" class="w-full bg-black border border-slate-800 p-4 rounded-2xl mb-8 text-white outline-none focus:border-red-600 font-black text-center text-xl">
+<h1 class="text-3xl font-bold mb-6">ADMIN PANEL</h1>
 
-            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Momos (Veg/Non-Veg)</h3>
-            <div class="menu-grid mb-8">
-                <button onclick="addItem('Veg Momos(5pc)', 50)" class="item-btn">Veg Momos <br> ₹50</button>
-                <button onclick="addItem('Chicken Momos(5pc)', 70)" class="item-btn">Chkn Momos <br> ₹70</button>
-                <button onclick="addItem('Paneer Momos(5pc)', 80)" class="item-btn">Pnr Momos <br> ₹80</button>
-                <button onclick="addItem('Kurkure Momos', 120)" class="item-btn">Kurkure <br> ₹120</button>
-            </div>
+<button onclick="fetchOrders()" class="bg-blue-600 px-4 py-2 rounded mb-6">
+Refresh Orders
+</button>
 
-            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Main Course</h3>
-            <div class="menu-grid mb-8">
-                <button onclick="addItem('Veg Burger', 70)" class="item-btn">Veg Burger <br> ₹70</button>
-                <button onclick="addItem('Chicken Burger', 110)" class="item-btn">Chkn Burger <br> ₹110</button>
-                <button onclick="addItem('Margherita Pizza', 190)" class="item-btn">Margherita <br> ₹190</button>
-                <button onclick="addItem('Chicken Pizza', 260)" class="item-btn">Chkn Pizza <br> ₹260</button>
-            </div>
+<h2 class="text-xl mb-3">Active Orders</h2>
+<div id="orders"></div>
 
-            <h3 class="text-orange-500 font-bold text-xs mb-3 uppercase tracking-widest">Beverages</h3>
-            <div class="menu-grid mb-8">
-                <button onclick="addItem('Cold Coffee', 90)" class="item-btn">Cold Coffee <br> ₹90</button>
-                <button onclick="addItem('Oreo Shake', 120)" class="item-btn">Oreo Shake <br> ₹120</button>
-                <button onclick="addItem('Virgin Mojito', 90)" class="item-btn">Mojito <br> ₹90</button>
-                <button onclick="addItem('Cold Drink', 40)" class="item-btn">Cold Drink <br> ₹40</button>
-            </div>
+<h2 class="text-xl mt-10 mb-3">Order History</h2>
+<div id="history"></div>
 
-            <div id="draftList" class="bg-black/50 p-6 rounded-3xl mb-8 text-sm text-slate-400 min-h-[80px] border border-slate-800 shadow-inner">
-                List is empty...
-            </div>
+<script>
 
-            <button onclick="confirmManualLink()" class="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-green-500 shadow-xl transition-all">Add to Table Bill</button>
-        </div>
-    </div>
+// ===== YOUR FIXED GOOGLE SHEET CSV LINK =====
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-    <script>
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-        let linkedBills = JSON.parse(localStorage.getItem('pos_manual_link_data')) || {};
-        let linkedIds = JSON.parse(localStorage.getItem('pos_linked_ids')) || [];
-        let draft = { items: [], total: 0 };
+let activeBills = JSON.parse(localStorage.getItem("activeBills")) || {};
+let historyBills = JSON.parse(localStorage.getItem("historyBills")) || {};
+let processedRows = JSON.parse(localStorage.getItem("processedRows")) || [];
 
-        function openManualModal() { document.getElementById('manualModal').classList.remove('hidden'); }
-        function closeManualModal() { 
-            document.getElementById('manualModal').classList.add('hidden');
-            draft = { items: [], total: 0 };
-            document.getElementById('draftList').innerText = "List is empty...";
+// ===== FETCH ORDERS =====
+async function fetchOrders(){
+    const res = await fetch(SHEET_URL + "&cb=" + Date.now());
+    const data = await res.text();
+    const rows = data.split("\n").slice(1);
+
+    rows.forEach((r,index)=>{
+        if(!r.trim()) return;
+
+        if(processedRows.includes(index)) return;
+
+        const cols = r.split(",");
+        const table = cols[1];
+        const items = cols[2];
+        const total = parseFloat(cols[3]) || 0;
+
+        if(!activeBills[table]){
+            activeBills[table] = {items:[], total:0};
         }
 
-        function addItem(name, price) {
-            draft.items.push(name);
-            draft.total += price;
-            document.getElementById('draftList').innerHTML = `<div class='text-white font-bold'>${draft.items.join(', ')}</div><div class='mt-4 text-green-400 font-black'>Total: ₹${draft.total}</div>`;
-        }
+        activeBills[table].items.push(items);
+        activeBills[table].total += total;
 
-        function confirmManualLink() {
-            const tName = document.getElementById('manualTableName').value.toUpperCase();
-            if(!tName || draft.items.length === 0) return alert("Enter Table Name & Add Items");
-            if (!linkedBills[tName]) linkedBills[tName] = { items: [], total: 0 };
-            linkedBills[tName].items.push(draft.items.join(', '));
-            linkedBills[tName].total += draft.total;
-            saveAndRefresh();
-            closeManualModal();
-        }
+        processedRows.push(index);
+    });
 
-        async function fetchOrders() {
-            try {
-                const response = await fetch(`${SHEET_URL}&cb=${Date.now()}`);
-                const csvData = await response.text();
-                const lines = csvData.split('\n').filter(l => l.trim() !== "");
-                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-                
-                const tIdx = headers.indexOf("Timestamp");
-                const bIdx = headers.indexOf("TABLE NO.");
-                const iIdx = headers.indexOf("ITEMS");
-                const mIdx = headers.indexOf("TOTAL MOUNT");
+    saveData();
+    render();
+}
 
-                const container = document.getElementById('incomingOrders');
-                container.innerHTML = "";
+// ===== RENDER ACTIVE =====
+function render(){
+    const div = document.getElementById("orders");
+    div.innerHTML="";
 
-                lines.slice(1).reverse().forEach(row => {
-                    const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(c => c.replace(/"/g, ''));
-                    const id = (cols[tIdx] + cols[bIdx]).replace(/\s+/g, '');
-                    if (!linkedIds.includes(id)) {
-                        const cleanItems = cols[iIdx].replace(/\|/g, '<br>');
-                        container.innerHTML += `
-                            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl border-l-4 border-l-red-600 shadow-xl">
-                                <h3 class="font-black text-xl text-white mb-2 italic">${cols[bIdx]}</h3>
-                                <div class="text-[11px] text-slate-400 mb-5 h-16 overflow-y-auto italic border-t border-white/5 pt-2">${cleanItems}</div>
-                                <button onclick="linkToBill('${cols[bIdx]}', '${encodeURIComponent(cleanItems)}', ${cols[mIdx]}, '${id}')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Link Order</button>
-                            </div>`;
-                    }
-                });
-                renderDesk();
-            } catch (e) { console.error("Sync Error"); }
-        }
+    Object.keys(activeBills).forEach(t=>{
+        const bill = activeBills[t];
+        div.innerHTML += `
+        <div class="border border-gray-700 p-4 mt-3 rounded">
+            <h3 class="text-lg font-bold">Table: ${t}</h3>
+            <div class="mt-2">${bill.items.join("<br>")}</div>
+            <div class="text-green-400 font-bold mt-2">Total: ₹${bill.total}</div>
 
-        function linkToBill(table, encItems, price, id) {
-            const items = decodeURIComponent(encItems);
-            if (!linkedBills[table]) linkedBills[table] = { items: [], total: 0 };
-            linkedBills[table].items.push(items);
-            linkedBills[table].total += parseFloat(price) || 0;
-            linkedIds.push(id);
-            saveAndRefresh();
-        }
+            <button onclick="printKOT('${t}')" class="bg-yellow-500 px-3 py-1 mt-3 mr-2 rounded">Print KOT</button>
+            <button onclick="printBill('${t}')" class="bg-green-600 px-3 py-1 mt-3 mr-2 rounded">Print Bill</button>
+            <button onclick="markPaid('${t}')" class="bg-red-600 px-3 py-1 mt-3 rounded">Mark Paid</button>
+        </div>`;
+    });
 
-        function renderDesk() {
-            const desk = document.getElementById('billingDesk');
-            desk.innerHTML = "";
-            Object.keys(linkedBills).forEach(table => {
-                const data = linkedBills[table];
-                desk.innerHTML += `
-                    <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2.5rem] shadow-2xl border-t-4 border-t-blue-500">
-                        <h2 class="text-3xl font-black text-white italic mb-4">${table}</h2>
-                        <div class="bg-black/50 rounded-2xl p-4 mb-4 text-sm text-slate-300 space-y-3 max-h-40 overflow-y-auto border border-slate-800">
-                            ${data.items.map(i => `<div class="border-b border-white/5 pb-2 last:border-0">${i}</div>`).join('')}
-                        </div>
-                        <div class="flex justify-between items-center mb-6 px-2">
-                            <span class="text-xs font-bold text-slate-500 uppercase">Total</span>
-                            <span class="text-2xl font-black text-green-400 font-mono italic">₹${data.total}</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="printBill('${table}')" class="bg-white text-black py-4 rounded-xl font-black text-[10px] uppercase shadow-lg">Print Bill</button>
-                            <button onclick="settle('${table}')" class="bg-green-600 text-white py-4 rounded-xl font-black text-[10px] uppercase shadow-lg">Settle</button>
-                        </div>
-                    </div>`;
-            });
-        }
+    renderHistory();
+}
 
-        function printBill(table) {
-            const data = linkedBills[table];
-            const win = window.open('', '_blank', 'width=400,height=600');
-            win.document.write(`<html><body style="font-family:monospace;padding:30px;"><center><h2>INVOICE</h2><h1>${table}</h1><hr></center><div style="font-size:14px;margin:20px 0;">${data.items.join('<br>')}</div><hr><h2>TOTAL: ₹${data.total}</h2><hr><script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
-            win.document.close();
-        }
+// ===== PRINT KOT =====
+function printKOT(t){
+    const w = window.open();
+    w.document.write("<h2>KOT - Table "+t+"</h2><hr>");
+    w.document.write(activeBills[t].items.join("<br>"));
+    w.print();
+}
 
-        function settle(table) { if (confirm("Clear " + table + "?")) { delete linkedBills[table]; saveAndRefresh(); } }
-        function saveAndRefresh() { localStorage.setItem('pos_manual_link_data', JSON.stringify(linkedBills)); localStorage.setItem('pos_linked_ids', JSON.stringify(linkedIds)); fetchOrders(); }
+// ===== PRINT BILL =====
+function printBill(t){
+    const w = window.open();
+    w.document.write("<h2>FINAL BILL - Table "+t+"</h2><hr>");
+    w.document.write(activeBills[t].items.join("<br>"));
+    w.document.write("<hr><h3>Total: ₹"+activeBills[t].total+"</h3>");
+    w.print();
+}
 
-        fetchOrders();
-    </script>
+// ===== MARK PAID =====
+function markPaid(t){
+    historyBills[t] = activeBills[t];
+    delete activeBills[t];
+    saveData();
+    render();
+}
+
+// ===== HISTORY =====
+function renderHistory(){
+    const div = document.getElementById("history");
+    div.innerHTML="";
+    Object.keys(historyBills).forEach(t=>{
+        const bill = historyBills[t];
+        div.innerHTML += `
+        <div class="border border-gray-700 p-3 mt-2 bg-gray-900 rounded">
+            <h4>Table ${t} (Paid)</h4>
+            <p>Total: ₹${bill.total}</p>
+        </div>`;
+    });
+}
+
+// ===== SAVE =====
+function saveData(){
+    localStorage.setItem("activeBills", JSON.stringify(activeBills));
+    localStorage.setItem("historyBills", JSON.stringify(historyBills));
+    localStorage.setItem("processedRows", JSON.stringify(processedRows));
+}
+
+render();
+
+</script>
+
 </body>
 </html>
