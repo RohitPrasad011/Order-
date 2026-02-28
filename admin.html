@@ -1,138 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
-<meta charset="UTF-8">
-<title>Admin Panel</title>
-<style>
-body{background:#111;color:#fff;font-family:Arial;padding:15px}
-button{padding:6px 12px;margin:4px;border:none;border-radius:6px;cursor:pointer}
-.card{border:1px solid #444;padding:10px;margin:10px 0;border-radius:8px}
-.kot{background:#f4b400}
-.bill{background:#0f9d58;color:#fff}
-.paid{background:#d93025;color:#fff}
-</style>
+    <meta charset="UTF-8">
+    <title>मसाला किचन - स्मार्ट एडमिन</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0b0f1a; color: #f1f5f9; font-family: sans-serif; }
+        .card-new { background: #161e2e; border: 1px solid #2d3748; padding: 15px; border-radius: 12px; border-top: 4px solid #f97316; }
+        .card-final { background: #1a2234; border: 1px solid #3b82f6; padding: 20px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+        pre { background: #000; padding: 10px; border-radius: 8px; color: #cbd5e0; font-size: 13px; white-space: pre-wrap; margin-top: 10px; border: 1px solid #1a202c; }
+        .btn-action { background: #3b82f6; width: 100%; color: white; font-weight: 800; padding: 12px; border-radius: 10px; margin-top: 10px; transition: 0.3s; }
+        .btn-action:hover { background: #2563eb; transform: translateY(-2px); }
+        .btn-print { background: #fff; color: #000; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; }
+        .btn-clear { background: #ef4444; color: #fff; font-weight: 800; padding: 10px; border-radius: 10px; flex: 1; }
+    </style>
 </head>
-<body>
+<body class="p-4 md:p-8">
 
-<h1>ADMIN PANEL</h1>
-<button onclick="loadOrders()">Refresh</button>
+    <div class="max-w-7xl mx-auto">
+        <header class="flex justify-between items-center mb-10 border-b border-slate-800 pb-6">
+            <h1 class="text-3xl font-black text-red-600 italic uppercase">Admin Terminal</h1>
+            <button onclick="loadOrders()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all active:scale-95">
+                🔄 रिफ्रेश डेटा
+            </button>
+        </header>
 
-<h2>Active Orders</h2>
-<div id="orders"></div>
+        <h2 class="text-orange-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 1: नए आए हुए ऑर्डर</h2>
+        <div id="incomingContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16"></div>
+
+        <h2 class="text-blue-500 font-bold text-xs mb-4 uppercase tracking-[3px]">Step 2: फाइनल बिलिंग डेस्क (Merged Tables)</h2>
+        <div id="mergedContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
 
 <script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-const ADMIN_ID="Rohitprasa";
-const ADMIN_PASS="00000000";
+let linkedBills = JSON.parse(localStorage.getItem('pos_linked_bills')) || {}; 
+let processedIds = JSON.parse(localStorage.getItem('pos_processed_ids')) || [];
 
-if(!sessionStorage.getItem("login")){
- let id=prompt("Admin ID:");
- let pw=prompt("Password:");
- if(id!==ADMIN_ID||pw!==ADMIN_PASS){
-   document.body.innerHTML="<h2>Access Denied</h2>";
-   throw new Error("Stop");
- }
- sessionStorage.setItem("login","true");
+async function loadOrders() {
+    try {
+        const res = await fetch(CSV_URL + "&t=" + Date.now());
+        const text = await res.text();
+        const rows = text.split('\n').map(row => row.split(',').map(cell => cell.replace(/"/g, '').trim()));
+        
+        const headers = rows[0];
+        const tIdx = headers.indexOf("Timestamp");
+        const bIdx = headers.indexOf("TABLE NO.");
+        const iIdx = headers.indexOf("ITEMS");
+        const mIdx = headers.indexOf("TOTAL MOUNT");
+
+        const incomingDiv = document.getElementById("incomingContainer");
+        incomingDiv.innerHTML = "";
+
+        for (let i = rows.length - 1; i >= 1; i--) {
+            let data = rows[i];
+            if (data.length < 3) continue;
+
+            let id = (data[tIdx] + data[bIdx]).replace(/\s+/g, '');
+            
+            if (!processedIds.includes(id)) {
+                incomingDiv.innerHTML += `
+                    <div class="card-new">
+                        <div class="flex justify-between font-black text-white">
+                            <span>ओरिजिनल: ${data[bIdx]}</span>
+                            <span class="text-orange-400">₹${data[mIdx]}</span>
+                        </div>
+                        <pre>${data[iIdx]}</pre>
+                        <button class="btn-action" onclick="askAndLink('${data[bIdx]}', '${encodeURIComponent(data[iIdx])}', ${data[mIdx]}, '${id}')">
+                           बिल में जोड़ें ➕
+                        </button>
+                    </div>`;
+            }
+        }
+        renderMergedBills();
+    } catch (e) { console.log("डेटा एरर"); }
 }
 
-const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-
-let activeOrders={};
-
-function parseCSV(text){
- let rows=[];
- let row=[];
- let cell="";
- let inside=false;
-
- for(let i=0;i<text.length;i++){
-   let char=text[i];
-   let next=text[i+1];
-
-   if(char=='"' && inside && next=='"'){
-     cell+='"';
-     i++;
-   }
-   else if(char=='"'){
-     inside=!inside;
-   }
-   else if(char==',' && !inside){
-     row.push(cell);
-     cell="";
-   }
-   else if((char=='\n' || char=='\r') && !inside){
-     if(cell||row.length){
-       row.push(cell);
-       rows.push(row);
-       row=[];
-       cell="";
-     }
-   }
-   else{
-     cell+=char;
-   }
- }
- return rows;
+// नया फीचर: फैमिली के लिए टेबल मर्ज करना
+function askAndLink(originalTable, items, price, id) {
+    let finalTable = prompt("यह ऑर्डर किस टेबल के बिल में जोड़ना है?", originalTable);
+    
+    if (finalTable != null) {
+        if (!linkedBills[finalTable]) {
+            linkedBills[finalTable] = { items: [], total: 0 };
+        }
+        linkedBills[finalTable].items.push(decodeURIComponent(items));
+        linkedBills[finalTable].total += parseFloat(price) || 0;
+        
+        processedIds.push(id);
+        save();
+        loadOrders();
+    }
 }
 
-async function loadOrders(){
- activeOrders={};
- const res=await fetch(CSV_URL+"&t="+Date.now());
- const text=await res.text();
- const data=parseCSV(text);
+function renderMergedBills() {
+    const mergedDiv = document.getElementById("mergedContainer");
+    mergedDiv.innerHTML = "";
 
- for(let i=1;i<data.length;i++){
-   let table=data[i][1];
-   let items=data[i][2];
-   let total=parseFloat(data[i][3])||0;
-
-   if(!table) continue;
-
-   if(!activeOrders[table]){
-     activeOrders[table]={items:[],total:0};
-   }
-   activeOrders[table].items.push(items);
-   activeOrders[table].total+=total;
- }
-
- render();
+    for (let table in linkedBills) {
+        let bill = linkedBills[table];
+        mergedDiv.innerHTML += `
+            <div class="card-final">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-black text-white italic">टेबल: ${table}</h2>
+                    <span class="bg-green-900 text-green-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase">Active</span>
+                </div>
+                <div class="bg-black/40 p-4 rounded-xl mb-4 max-h-48 overflow-y-auto text-sm text-slate-300 border border-slate-800">
+                    ${bill.items.map(i => `<div class="py-2 border-b border-white/5 last:border-0">${i}</div>`).join('')}
+                </div>
+                <div class="flex justify-between font-black text-xl mb-6 text-green-400 border-t border-slate-800 pt-4">
+                    <span>कुल बिल:</span>
+                    <span>₹${bill.total}</span>
+                </div>
+                <div class="flex gap-3">
+                    <button class="btn-print" onclick="printFinal('${table}')">प्रिंट (Print)</button>
+                    <button class="btn-clear" onclick="settle('${table}')">फाइनल (Settle)</button>
+                </div>
+            </div>`;
+    }
 }
 
-function render(){
- let container=document.getElementById("orders");
- container.innerHTML="";
-
- for(let t in activeOrders){
-   let o=activeOrders[t];
-   container.innerHTML+=`
-     <div class="card">
-       <h3>Table: ${t}</h3>
-       <pre>${o.items.join("\n\n")}</pre>
-       <h4>Total: ₹${o.total}</h4>
-       <button class="kot" onclick="printKOT('${t}')">Print KOT</button>
-       <button class="bill" onclick="printBill('${t}')">Print Bill</button>
-     </div>
-   `;
- }
+function printFinal(t) {
+    let b = linkedBills[t];
+    let w = window.open("");
+    w.document.write(`<html><body style="font-family:monospace; padding:30px; width:300px;">
+        <center><h2>INVOICE</h2><h1>${t}</h1><hr></center>
+        <div style="font-size:14px; margin:20px 0;">${b.items.join('<br>')}</div>
+        <hr><h2 style="display:flex; justify-content:space-between;"><span>Total:</span> <span>₹${b.total}</span></h2><hr>
+        <center><p>पधारने के लिए धन्यवाद!</p></center>
+    </body></html>`);
+    w.print(); w.close();
 }
 
-function printKOT(t){
- let o=activeOrders[t];
- let w=window.open("");
- w.document.write("<h2>KOT</h2><pre>"+o.items.join("\n")+"</pre>");
- w.print();
+function settle(t) {
+    if (confirm("क्या " + t + " का पेमेंट हो गया है?")) {
+        delete linkedBills[t];
+        save();
+        loadOrders();
+    }
 }
 
-function printBill(t){
- let o=activeOrders[t];
- let w=window.open("");
- w.document.write("<h2>FINAL BILL</h2><hr>Table: "+t+
- "<pre>"+o.items.join("\n")+"</pre><hr><h3>Total: ₹"+o.total+"</h3>");
- w.print();
+function save() {
+    localStorage.setItem('pos_linked_bills', JSON.stringify(linkedBills));
+    localStorage.setItem('pos_processed_ids', JSON.stringify(processedIds));
 }
 
 loadOrders();
-
+setInterval(loadOrders, 30000); 
 </script>
 </body>
 </html>
