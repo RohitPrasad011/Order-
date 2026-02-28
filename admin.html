@@ -10,9 +10,9 @@
         @media print {
             .no-print { display: none !important; }
             body { background: white !important; color: black !important; }
-            .order-card { border: 1px dashed #000 !important; box-shadow: none !important; width: 100% !important; margin: 0; border-radius: 0 !important; }
+            .order-card { border: 1px dashed #000 !important; box-shadow: none !important; width: 100% !important; border-radius: 0 !important; }
         }
-        .accepted { opacity: 0.3; filter: grayscale(100%); pointer-events: none; }
+        .accepted { border-color: #10b981 !important; background-color: #020617 !important; opacity: 0.6; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-10 font-sans">
@@ -20,43 +20,56 @@
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-10 border-b border-slate-800 pb-8 no-print">
             <div>
-                <h1 class="text-3xl font-black text-white italic tracking-tighter uppercase"><i class="fas fa-terminal text-red-600"></i> Admin Terminal</h1>
-                <p id="syncStatus" class="text-[10px] text-green-500 font-bold uppercase tracking-widest mt-1 italic">System Online</p>
+                <h1 class="text-3xl font-black text-white italic tracking-tighter uppercase">
+                    <i class="fas fa-terminal text-red-600 mr-2"></i>Admin Dashboard
+                </h1>
+                <p id="syncStatus" class="text-[10px] text-green-500 font-bold uppercase tracking-widest mt-1 italic">Live Data Connected</p>
             </div>
             <button onclick="fetchOrders()" class="bg-slate-800 p-4 rounded-2xl hover:bg-slate-700 transition-all border border-slate-700 active:scale-90">
                 <i class="fas fa-sync-alt"></i>
             </button>
         </header>
 
-        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-center py-20">
-            <p class="col-span-full text-slate-600 font-bold uppercase tracking-widest italic animate-pulse">Connecting to Google Sheets...</p>
+        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-20 text-slate-600 font-bold uppercase tracking-widest italic animate-pulse">
+                Fetching Orders from Google Sheets...
+            </div>
         </div>
     </div>
 
+    <audio id="orderAlert" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
     <script>
-        // ✅ Correct Spreadsheet Configuration
-        const SHEET_ID = "1slZX7KOLmywLkikGt-l0D0_QaOCBMWwPR9vO_PpFI6c";
-        const SHEET_NAME = "Form Responses 1"; 
-        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+        // ✅ आपका नया Published CSV लिंक (इसे मैंने सही फॉर्मेट में कर दिया है)
+        const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+        
+        let lastOrderCount = 0;
 
         async function fetchOrders() {
             try {
-                const response = await fetch(CSV_URL);
-                if (!response.ok) throw new Error("Failed to fetch");
-                
+                const response = await fetch(PUBLISHED_URL);
                 const csvData = await response.text();
-                const rows = csvData.split('\n').slice(1).reverse(); // Show newest first
+                
+                // CSV को पंक्तियों में बांटें
+                const rows = csvData.split('\n').slice(1).reverse();
                 const container = document.getElementById('ordersGrid');
                 
                 if (rows.length === 0 || rows[0].trim() === "") {
-                    container.innerHTML = "<p class='col-span-full text-slate-500'>No orders found in database.</p>";
+                    container.innerHTML = "<p class='col-span-full text-center text-slate-500'>No orders found.</p>";
                     return;
                 }
+
+                // नए आर्डर की आवाज
+                if (rows.length > lastOrderCount && lastOrderCount !== 0) {
+                    document.getElementById('orderAlert').play();
+                }
+                lastOrderCount = rows.length;
 
                 container.innerHTML = "";
 
                 rows.forEach((row, index) => {
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    
                     if (cols.length >= 3) {
                         const time = cols[0].replace(/"/g, '');
                         const table = cols[1].replace(/"/g, '');
@@ -64,36 +77,34 @@
                         const total = cols[3] ? cols[3].replace(/"/g, '') : "0";
 
                         container.innerHTML += `
-                            <div class="order-card bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl relative transition-all duration-500" id="order-${index}">
+                            <div class="order-card bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl relative transition-all duration-300" id="card-${index}">
                                 <div class="flex justify-between items-start mb-6 no-print">
-                                    <span class="bg-red-600/20 text-red-500 text-[9px] font-black px-3 py-1 rounded-full uppercase italic">Pending</span>
-                                    <span class="text-slate-700 font-black italic">#INV-${index}</span>
+                                    <span id="status-${index}" class="bg-red-600 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase italic">Pending</span>
+                                    <span class="text-slate-800 font-black italic">#${rows.length - index}</span>
                                 </div>
                                 
-                                <h2 class="text-3xl font-black text-white leading-none mb-1">${table}</h2>
+                                <h2 class="text-4xl font-black text-white leading-none mb-1">${table}</h2>
                                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-6">${time}</p>
 
-                                <div class="bg-black/40 rounded-3xl p-6 mb-6 border border-slate-800/50 text-left">
-                                    <p class="text-[9px] text-slate-600 font-black uppercase mb-3 border-b border-slate-800 pb-1 italic">Order List</p>
+                                <div class="bg-black/40 rounded-3xl p-6 mb-6 border border-slate-800/50">
                                     <div class="text-sm font-medium text-slate-300 leading-relaxed italic">
                                         ${items}
                                     </div>
                                 </div>
 
                                 <div class="flex justify-between items-center mb-8 border-t border-slate-800 pt-6 px-2">
-                                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Grand Total</span>
+                                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Bill</span>
                                     <span class="text-2xl font-black text-green-400 font-mono italic">₹${total}</span>
                                 </div>
 
                                 <div class="flex gap-2 no-print">
-                                    <button onclick="window.print()" class="flex-1 bg-white text-black py-4 rounded-2xl font-black text-[11px] uppercase active:scale-95 transition-all shadow-lg hover:bg-gray-200">
-                                        <i class="fas fa-print mr-1"></i> Print Bill
+                                    <button onclick="window.print()" class="flex-1 bg-white text-black py-4 rounded-2xl font-black text-[11px] uppercase hover:bg-gray-200 transition-all active:scale-95">
+                                        <i class="fas fa-print mr-1"></i> Print
                                     </button>
                                     <button onclick="acceptOrder(${index})" class="bg-slate-800 text-green-500 px-6 rounded-2xl border border-slate-700 hover:bg-green-600 hover:text-white transition-all">
                                         <i class="fas fa-check"></i>
                                     </button>
                                 </div>
-                                <div class="hidden text-green-500 font-black italic uppercase text-sm mt-4" id="label-${index}">Accepted ✅</div>
                             </div>
                         `;
                     }
@@ -101,17 +112,21 @@
                 
                 document.getElementById('syncStatus').innerText = "Last Sync: " + new Date().toLocaleTimeString();
             } catch (error) {
-                console.error("Fetch Error:", error);
-                document.getElementById('ordersGrid').innerHTML = `<p class='col-span-full text-red-500'>Connection Error! Check if Sheet is Public.</p>`;
+                console.error("Error:", error);
+                document.getElementById('ordersGrid').innerHTML = "<p class='col-span-full text-red-500 text-center'>Connection Error. Refreshing...</p>";
             }
         }
 
         function acceptOrder(id) {
-            document.getElementById(`order-${id}`).classList.add('accepted');
-            document.getElementById(`label-${id}`).classList.remove('hidden');
+            const card = document.getElementById(`card-${id}`);
+            const status = document.getElementById(`status-${id}`);
+            card.classList.add('accepted');
+            status.innerText = "Accepted ✅";
+            status.classList.remove('bg-red-600');
+            status.classList.add('bg-green-600');
         }
 
-        // Auto Refresh every 10 seconds
+        // हर 10 सेकंड में ऑटो रिफ्रेश
         setInterval(fetchOrders, 10000);
         fetchOrders();
     </script>
