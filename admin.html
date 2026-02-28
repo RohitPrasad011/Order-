@@ -3,129 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Admin - Final</title>
+    <title>POS Admin - Fast Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* प्रिंट के लिए खास सेटिंग */
-        @media print {
-            body * { visibility: hidden; }
-            #printSection, #printSection * { visibility: visible; }
-            #printSection { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; }
-            .no-print { display: none !important; }
-        }
-        .tab-active { border-bottom: 4px solid #ef4444; color: white; }
+        .tab-active { border-bottom: 4px solid #ef4444; color: white; scale: 1.05; transition: 0.2s; }
+        .order-card { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-    <div id="mainUI" class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-black italic uppercase text-red-600">POS TERMINAL</h1>
-            <button onclick="fetchOrders()" class="bg-slate-900 p-3 rounded-xl border border-slate-800"><i class="fas fa-sync-alt"></i></button>
+    <div class="max-w-6xl mx-auto no-print">
+        <header class="flex justify-between items-center mb-6 border-b border-slate-900 pb-4">
+            <div>
+                <h1 class="text-2xl font-black italic uppercase text-red-600 tracking-tighter">POS TERMINAL</h1>
+                <p id="syncStatus" class="text-[9px] text-green-500 font-bold uppercase">Ready</p>
+            </div>
+            <button onclick="fetchOrders()" class="bg-slate-900 p-3 rounded-2xl border border-slate-800 hover:bg-slate-800 transition-all active:scale-90">
+                <i class="fas fa-sync-alt"></i>
+            </button>
         </header>
 
-        <div class="flex gap-8 mb-8 border-b border-slate-800">
-            <button onclick="switchTab('live')" id="tab-live" class="pb-4 text-sm font-black uppercase tab-active">Live Orders</button>
-            <button onclick="switchTab('history')" id="tab-history" class="pb-4 text-sm font-black uppercase text-slate-500">Accepted History</button>
+        <div class="flex gap-6 mb-8 no-print">
+            <button onclick="switchTab('live')" id="tab-live" class="pb-2 text-xs font-black uppercase tab-active">Live Orders</button>
+            <button onclick="switchTab('history')" id="tab-history" class="pb-2 text-xs font-black uppercase text-slate-600">History</button>
         </div>
 
-        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div id="ordersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center py-20"><i class="fas fa-circle-notch animate-spin text-2xl text-slate-700"></i></div>
+        </div>
     </div>
 
-    <div id="printArea" class="hidden"></div>
-
     <script>
-        const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+        // ✅ Fast Load URL with Cache Buster
+        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
         let currentTab = 'live';
-        let acceptedOrders = JSON.parse(localStorage.getItem('pos_accepted_final')) || [];
+        let acceptedOrders = JSON.parse(localStorage.getItem('pos_history_final')) || [];
 
         function switchTab(tab) {
             currentTab = tab;
-            document.getElementById('tab-live').className = tab === 'live' ? 'pb-4 text-sm font-black uppercase tab-active' : 'pb-4 text-sm font-black uppercase text-slate-500';
-            document.getElementById('tab-history').className = tab === 'history' ? 'pb-4 text-sm font-black uppercase tab-active' : 'pb-4 text-sm font-black uppercase text-slate-500';
-            fetchOrders();
+            document.getElementById('tab-live').className = tab === 'live' ? 'pb-2 text-xs font-black uppercase tab-active' : 'pb-2 text-xs font-black uppercase text-slate-600';
+            document.getElementById('tab-history').className = tab === 'history' ? 'pb-2 text-xs font-black uppercase tab-active' : 'pb-2 text-xs font-black uppercase text-slate-600';
+            renderOrders(window.lastData || []);
         }
 
         async function fetchOrders() {
             try {
-                const response = await fetch(PUBLISHED_URL + "&t=" + new Date().getTime());
-                const csvText = await response.text();
-                const lines = csvText.split('\n').filter(l => l.trim() !== "");
+                // Time based cache buster for speed
+                const response = await fetch(`${SHEET_URL}&cb=${Date.now()}`);
+                const csvData = await response.text();
+                const lines = csvData.split('\n').filter(l => l.trim() !== "");
                 
-                // कॉलम की पहचान (Timestamp, TABLE NO., ITEMS, TOTAL MOUNT)
                 const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
                 const tIdx = headers.indexOf("Timestamp");
                 const bIdx = headers.indexOf("TABLE NO.");
                 const iIdx = headers.indexOf("ITEMS");
                 const mIdx = headers.indexOf("TOTAL MOUNT");
 
-                const container = document.getElementById('ordersGrid');
-                container.innerHTML = "";
-                const rows = lines.slice(1).reverse();
-
-                rows.forEach((row) => {
+                const rows = lines.slice(1).reverse().map(row => {
                     const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(c => c.replace(/"/g, ''));
-                    const time = cols[tIdx];
-                    const table = cols[bIdx];
-                    const items = cols[iIdx]?.replace(/\|/g, '<br>').replace(/\\n/g, '<br>') || "No items";
-                    const total = cols[mIdx] || "0";
-                    const orderId = (time + table).replace(/\s+/g, '');
-
-                    const isAccepted = acceptedOrders.includes(orderId);
-
-                    if ((currentTab === 'live' && !isAccepted) || (currentTab === 'history' && isAccepted)) {
-                        container.innerHTML += `
-                            <div class="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-xl relative">
-                                <h2 class="text-3xl font-black text-white leading-none">${table}</h2>
-                                <p class="text-[9px] text-slate-500 font-bold uppercase mb-4">${time}</p>
-                                <div class="bg-black/30 rounded-2xl p-4 mb-4 border border-slate-800 text-sm italic text-slate-300">${items}</div>
-                                <div class="flex justify-between items-center mb-6 border-t border-slate-800 pt-4 px-2">
-                                    <span class="text-xs font-bold text-slate-500 uppercase">Total</span>
-                                    <span class="text-xl font-black text-green-400 font-mono italic">₹${total}</span>
-                                </div>
-                                <div class="flex flex-col gap-2">
-                                    <div class="flex gap-2">
-                                        <button onclick="doPrint('${table}', '${items}', '${total}', 'KOT')" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-black text-[10px] uppercase">KOT</button>
-                                        <button onclick="doPrint('${table}', '${items}', '${total}', 'BILL')" class="flex-1 bg-white text-black py-3 rounded-xl font-black text-[10px] uppercase">Bill</button>
-                                    </div>
-                                    ${!isAccepted ? `<button onclick="moveToHistory('${orderId}')" class="w-full bg-green-600 text-white py-2 rounded-xl font-bold uppercase text-[10px]">Confirm & Done <i class="fas fa-check"></i></button>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }
+                    return {
+                        time: cols[tIdx] || "",
+                        table: cols[bIdx] || "Order",
+                        items: cols[iIdx]?.replace(/\|/g, '<br>').replace(/\\n/g, '<br>') || "No items",
+                        total: cols[mIdx] || "0",
+                        id: (cols[tIdx] + cols[bIdx]).replace(/\s+/g, '')
+                    };
                 });
-            } catch (e) { console.error(e); }
+
+                window.lastData = rows;
+                renderOrders(rows);
+                document.getElementById('syncStatus').innerText = "Last Update: " + new Date().toLocaleTimeString();
+            } catch (e) { 
+                console.error("Fast Load Error:", e);
+                document.getElementById('syncStatus').innerText = "Connection Weak...";
+            }
         }
 
-        function doPrint(table, items, total, type) {
-            const printWindow = window.open('', '_blank');
+        function renderOrders(data) {
+            const container = document.getElementById('ordersGrid');
+            container.innerHTML = "";
+            let count = 0;
+
+            data.forEach(order => {
+                const isAccepted = acceptedOrders.includes(order.id);
+                if ((currentTab === 'live' && !isAccepted) || (currentTab === 'history' && isAccepted)) {
+                    count++;
+                    container.innerHTML += `
+                        <div class="order-card bg-slate-900 border border-slate-800 rounded-[1.5rem] p-5 shadow-xl">
+                            <h2 class="text-2xl font-black text-white">${order.table}</h2>
+                            <p class="text-[8px] text-slate-500 font-bold uppercase mb-3">${order.time}</p>
+                            <div class="bg-black/40 rounded-xl p-4 mb-4 border border-slate-800 text-sm italic text-slate-300 line-clamp-6">${order.items}</div>
+                            <div class="flex justify-between items-center mb-4 border-t border-slate-800 pt-3">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">Total</span>
+                                <span class="text-lg font-black text-green-400 font-mono italic">₹${order.total}</span>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <div class="flex gap-2">
+                                    <button onclick="printSingle('${order.table}', '${order.items.replace(/'/g, "\\'")}', '${order.total}', 'KOT')" class="flex-1 bg-orange-700/20 text-orange-500 py-2 rounded-lg font-bold text-[10px] border border-orange-700/30">KOT</button>
+                                    <button onclick="printSingle('${order.table}', '${order.items.replace(/'/g, "\\'")}', '${order.total}', 'BILL')" class="flex-1 bg-white text-black py-2 rounded-lg font-bold text-[10px]">BILL</button>
+                                </div>
+                                ${!isAccepted ? `<button onclick="moveToHistory('${order.id}')" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold text-[10px] uppercase">Accept <i class="fas fa-check"></i></button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (count === 0) container.innerHTML = `<p class="col-span-full text-center py-20 text-slate-700 font-bold italic uppercase tracking-widest">No ${currentTab} orders</p>`;
+        }
+
+        function printSingle(table, items, total, type) {
+            const printWindow = window.open('', '_blank', 'width=350,height=600');
             printWindow.document.write(`
-                <html>
-                <body style="font-family:monospace; width:300px; padding:20px;">
-                    <center>
-                        <h2>${type === 'KOT' ? 'KITCHEN ORDER' : 'CUSTOMER BILL'}</h2>
-                        <hr>
-                        <h3>${table}</h3>
-                    </center>
-                    <p style="font-size:14px;">${items}</p>
-                    ${type === 'BILL' ? `<hr><h3>TOTAL: ₹${total}</h3>` : ''}
-                    <hr>
-                    <center><p>Thank You!</p></center>
-                    <script>window.onload = function() { window.print(); window.close(); };<\/script>
-                </body>
-                </html>
+                <html><body style="font-family:monospace;padding:10px;font-size:12px;">
+                <center><h3>${type}</h3><h1>${table}</h1><hr></center>
+                <div>${items}</div><hr>
+                ${type === 'BILL' ? `<h2 style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>₹${total}</span></h2><hr>` : ''}
+                <center><p>*** POS TERMINAL ***</p></center>
+                <script>window.onload=function(){window.print();window.close();}<\/script></body></html>
             `);
             printWindow.document.close();
         }
 
         function moveToHistory(id) {
             acceptedOrders.push(id);
-            localStorage.setItem('pos_accepted_final', JSON.stringify(acceptedOrders));
-            fetchOrders();
+            localStorage.setItem('pos_history_final', JSON.stringify(acceptedOrders));
+            renderOrders(window.lastData || []);
         }
 
-        setInterval(fetchOrders, 10000);
+        // Auto Refresh every 8 seconds for speed
+        setInterval(fetchOrders, 8000);
         fetchOrders();
     </script>
 </body>
