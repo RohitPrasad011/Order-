@@ -7,48 +7,46 @@
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-/* --- App UI Style --- */
+/* --- App UI Style (वही जो आपके पास है) --- */
 body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
-.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); transition: 0.3s; position: relative; }
+.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); }
 .history-card { background:#0f172a; opacity:.4; filter: grayscale(0.8); }
-
-/* Merge Selection Style */
-.selected-card { border-color: #3b82f6 !important; background: #1e293b !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); transform: scale(1.02); }
 
 button { font-weight:700; font-size:14px; height:48px; border-radius:12px; transition:0.2s; cursor:pointer; }
 button:active { transform: scale(0.96); }
 .btn-kot { background:#ea580c; color:#fff; border-bottom:3px solid #9a3412; }
 .btn-bill { background:#3b82f6; color:#fff; border-bottom:3px solid #1d4ed8; }
-.btn-merge-action { background:#10b981; color:#fff; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: none; }
 
 pre { background:#000; padding:12px; border-radius:10px; font-size:15px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; line-height:1.4; }
 
-/* 🔥 PRINTING SYSTEM 🔥 */
+/* 🔥 PRINT SYSTEM (WHITE BACKGROUND, BLACK TEXT) 🔥 */
 @media print {
     @page { margin: 0; size: auto; }
-    body * { display: none !important; }
-    #printSection, #printSection * { display: block !important; visibility: visible !important; }
+    body * { visibility: hidden; }
+    #printSection, #printSection * { 
+        visibility: visible !important; 
+        display: block !important; 
+        background: white !important; 
+        color: black !important; 
+    }
     #printSection { 
         position: absolute; left: 0; top: 0; width: 100%; 
-        background: white !important; color: black !important; padding: 20px; margin: 0; 
+        padding: 15px; margin: 0; 
     }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .print-line { border-top: 1px dashed black !important; margin: 8px 0; }
 }
 #printSection { display: none; }
 </style>
 </head>
 
-<body class="p-4 pb-32">
+<body class="p-4 pb-24">
 
 <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a]/90 backdrop-blur py-3 z-50 border-b border-gray-800">
-  <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">Royal Food <span class="text-orange-500 font-bold text-2xl">POS</span></h1>
-  <div class="flex gap-2">
-    <button onclick="toggleMergeMode()" id="mergeBtnToggle" class="bg-gray-700 text-[10px] px-3 h-9 rounded-lg border border-gray-600 uppercase tracking-widest">Merge</button>
-    <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-3 h-9 rounded-lg border border-gray-700 uppercase tracking-widest text-orange-400">Refresh</button>
-  </div>
+  <h1 class="text-xl font-black italic text-white uppercase tracking-tighter">Royal Food <span class="text-orange-500 font-bold">POS</span></h1>
+  <button onclick="loadOrders()" class="bg-gray-800 text-[10px] px-4 h-9 rounded-lg border border-gray-700 uppercase tracking-widest">Refresh</button>
 </header>
 
-<main id="mainContent">
+<main>
   <h2 class="text-[11px] text-orange-500 font-bold uppercase mb-4 tracking-widest flex items-center gap-2">
     <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span> New Orders
   </h2>
@@ -60,19 +58,13 @@ pre { background:#000; padding:12px; border-radius:10px; font-size:15px; white-s
   <div id="historyList"></div>
 </main>
 
-<button onclick="printMergedBill()" id="mergeActionButton" class="btn-merge-action italic uppercase">
-    Print Merged Bill (₹<span id="mergeTotal">0</span>)
-</button>
-
 <div id="printSection"></div>
 
 <script>
+// 🔥 YOUR SHEET LINK & SETTINGS (NO CHANGE)
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 const HISTORY_KEY = "royal_food_v20_final";
 
-let allOrdersRaw = []; // Store raw data for merging
-let selectedOrders = []; 
-let isMergeMode = false;
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
 
 function parseCSV(text) {
@@ -95,96 +87,34 @@ async function loadOrders() {
         const res = await fetch(SHEET_URL + "&t=" + Date.now());
         const data = await res.text();
         const rows = parseCSV(data);
-        allOrdersRaw = rows.filter(r => r[1] && r[1].toLowerCase() !== "table"); // Filter header
-        renderOrders();
+        const orderDiv = document.getElementById("orderList");
+        const historyDiv = document.getElementById("historyList");
+        orderDiv.innerHTML = ""; historyDiv.innerHTML = "";
+
+        for (let i = rows.length - 1; i >= 1; i--) {
+            const row = rows[i];
+            if (!row || !row[1]) continue;
+            const [time, table, items, total] = row;
+            const id = (table + time).replace(/\s/g, "");
+            const isHistory = history.includes(id);
+
+            const card = `
+            <div class="card ${isHistory ? "history-card" : ""}">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-black text-xl italic">${table}</span>
+                    <span class="text-green-400 font-bold text-2xl">₹${total}</span>
+                </div>
+                <pre>${items.replace(/\\n/g, '\n')}</pre>
+                ${!isHistory ? `
+                <div class="flex gap-3 mt-4">
+                    <button class="btn-kot flex-1" onclick="printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT (Kitchen)</button>
+                    <button class="btn-bill flex-1" onclick="printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')">BILL (Print)</button>
+                </div>` : ''}
+            </div>`;
+            if (isHistory) historyDiv.innerHTML += card;
+            else orderDiv.innerHTML += card;
+        }
     } catch (e) { console.error("Sync Error:", e); }
-}
-
-function renderOrders() {
-    const orderDiv = document.getElementById("orderList");
-    const historyDiv = document.getElementById("historyList");
-    orderDiv.innerHTML = ""; historyDiv.innerHTML = "";
-    selectedOrders = [];
-    updateMergeUI();
-
-    allOrdersRaw.slice().reverse().forEach((row, index) => {
-        const realIdx = allOrdersRaw.length - 1 - index;
-        const [time, table, items, total] = row;
-        const id = (table + time).replace(/\s/g, "");
-        const isHistory = history.includes(id);
-
-        const card = document.createElement("div");
-        card.id = `card-${realIdx}`;
-        card.className = `card ${isHistory ? "history-card" : ""}`;
-        card.onclick = () => handleCardClick(realIdx);
-        
-        card.innerHTML = `
-            <div class="flex justify-between items-center mb-2 pointer-events-none">
-                <span class="font-black text-xl italic uppercase">${table}</span>
-                <span class="text-green-400 font-bold text-2xl">₹${total}</span>
-            </div>
-            <pre class="pointer-events-none">${items.replace(/\\n/g, '\n')}</pre>
-            ${!isHistory && !isMergeMode ? `
-            <div class="flex gap-3 mt-4">
-                <button class="btn-kot flex-1" onclick="event.stopPropagation(); printDoc('KOT','${table}','${encodeURIComponent(items)}','')">KOT</button>
-                <button class="btn-bill flex-1" onclick="event.stopPropagation(); printBill('${id}','${table}','${encodeURIComponent(items)}','${total}')">BILL</button>
-            </div>` : ''}
-        `;
-        
-        if (isHistory) historyDiv.appendChild(card);
-        else orderDiv.appendChild(card);
-    });
-}
-
-function toggleMergeMode() {
-    isMergeMode = !isMergeMode;
-    const btn = document.getElementById("mergeBtnToggle");
-    btn.innerHTML = isMergeMode ? "Cancel" : "Merge";
-    btn.classList.toggle("bg-red-600");
-    renderOrders();
-}
-
-function handleCardClick(idx) {
-    if (!isMergeMode) return;
-    const card = document.getElementById(`card-${idx}`);
-    const selIdx = selectedOrders.indexOf(idx);
-
-    if (selIdx > -1) {
-        selectedOrders.splice(selIdx, 1);
-        card.classList.remove("selected-card");
-    } else {
-        selectedOrders.push(idx);
-        card.classList.add("selected-card");
-    }
-    updateMergeUI();
-}
-
-function updateMergeUI() {
-    const actionBtn = document.getElementById("mergeActionButton");
-    const totalDisp = document.getElementById("mergeTotal");
-    
-    if (isMergeMode && selectedOrders.length > 1) {
-        let sum = selectedOrders.reduce((a, idx) => a + (parseInt(allOrdersRaw[idx][3]) || 0), 0);
-        totalDisp.innerText = sum;
-        actionBtn.style.display = "block";
-    } else {
-        actionBtn.style.display = "none";
-    }
-}
-
-function printMergedBill() {
-    let combinedItems = "";
-    let combinedTotal = 0;
-    let tables = [];
-
-    selectedOrders.sort((a,b) => a-b).forEach(idx => {
-        combinedItems += decodeURIComponent(allOrdersRaw[idx][2]).replace(/\\n/g, '\n') + "\n";
-        combinedTotal += parseInt(allOrdersRaw[idx][3]) || 0;
-        if (!tables.includes(allOrdersRaw[idx][1])) tables.push(allOrdersRaw[idx][1]);
-    });
-
-    printDoc('BILL', tables.join(" + "), encodeURIComponent(combinedItems), combinedTotal);
-    toggleMergeMode();
 }
 
 function printBill(id, table, itemsEnc, total) {
@@ -202,34 +132,47 @@ function printDoc(type, table, itemsEnc, total) {
     
     let content = "";
     if(type === 'KOT') {
-        content = `<div style="width:280px; padding:10px; font-family:monospace; color:black;">
-            <center><div style="border:2px solid black; display:inline-block; padding:2px 15px; font-size:22px; font-weight:bold;">K.O.T</div><br>
-            <b style="font-size:24px; margin-top:10px; display:block; text-decoration: underline;">TABLE: ${table}</b></center>
-            <div style="border-top:1px solid #000; margin:10px 0"></div>
+        content = `<div style="width:260px; font-family:monospace;">
+            <center><b style="font-size:22px; border:2px solid black; padding:2px 10px;">K.O.T</b><br><b style="font-size:20px; display:block; margin-top:8px;">TABLE: ${table}</b></center>
+            <div class="print-line"></div>
             <div style="font-size:12px;">Date: ${new Date().toLocaleString()}</div>
-            <div style="border-top:2px solid #000; margin:5px 0"></div>
-            <div style="white-space:pre-wrap; font-size:18px; font-weight:bold; line-height:1.6; min-height:60px;">${items}</div>
-            <div style="border-top:2px solid #000; margin:10px 0"></div>
-            <center><b style="font-size:14px;">--- KITCHEN COPY ---</b></center>
+            <div class="print-line" style="border-style:solid !important;"></div>
+            <div style="font-size:18px; font-weight:bold; line-height:1.6; min-height:60px;">${items}</div>
+            <div class="print-line" style="border-style:solid !important;"></div>
+            <center><b>*** KITCHEN COPY ***</b></center>
         </div>`;
     } else {
-        content = `<div style="width:280px; padding:15px; font-family:monospace; color:black;">
+        content = `<div style="width:260px; font-family:monospace;">
             <center><b style="font-size:18px;">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
-            <div style="border-top:1px dashed #000; margin:10px 0"></div>
+            <div class="print-line"></div>
             <div style="display:flex; justify-content:space-between; font-size:14px;"><b>INVOICE</b><b>Table: ${table}</b></div>
-            <div style="font-size:11px; margin-top:2px;">Date: ${new Date().toLocaleString()}</div>
-            <div style="border-top:1px dashed #000; margin:10px 0"></div>
-            <div style="white-space:pre-wrap; font-size:15px; line-height:1.4;">${items}</div>
-            <div style="border-top:1px dashed #000; margin:10px 0"></div>
-            <div style="text-align:right; font-weight:bold; font-size:19px;">GRAND TOTAL: ₹${total}</div>
-            <div style="border-top:1px dashed #000; margin:10px 0"></div>
-            <center><b>Thank You 🙏 Visit Again!</b><br>
-            <small>Instagram: @rpwebservice | Contact: +91 0000000000</small></center>
+            <div style="font-size:11px;">Date: ${new Date().toLocaleString()}</div>
+            <div class="print-line"></div>
+            
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:13px;">
+                <span>DESCRIPTION</span><span>PRICE</span>
+            </div>
+            
+            <div style="font-size:14px; line-height:1.5; white-space:pre-wrap; min-height:50px; margin-top:5px;">${items}</div>
+            
+            <div class="print-line"></div>
+            <div style="text-align:right; font-size:19px;"><b>GRAND TOTAL: ₹${total}</b></div>
+            <div class="print-line"></div>
+            
+            <center>
+                <b style="font-size:14px;">Thank You 🙏 Visit Again!</b><br>
+                <small style="font-size:10px;">Instagram: @rpwebservice | Contact: +91 000</small>
+            </center>
         </div>`;
     }
 
     area.innerHTML = content;
-    setTimeout(() => { window.print(); area.innerHTML = ""; }, 500);
+    
+    // 💡 Wait for 1 second for perfect preview rendering
+    setTimeout(() => {
+        window.print();
+        area.innerHTML = ""; 
+    }, 1000);
 }
 
 loadOrders();
