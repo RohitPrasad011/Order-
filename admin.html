@@ -2,61 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile POS Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Admin - History Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #05070a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        /* Mobile Specific Grid */
-        .order-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        @media (min-width: 640px) { .order-grid { grid-template-columns: repeat(2, 1fr); } }
-        
-        .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 14px; position: relative; }
-        .card.selected { border: 2px solid #3b82f6; background: #1e293b; }
-        
-        /* Large Touch Targets for Mobile */
-        button { active:scale-95 transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
-        .btn-action { height: 48px; display: flex; items-center: center; justify-content: center; border-radius: 12px; font-weight: 800; font-size: 12px; text-transform: uppercase; }
-        
-        pre { background: #000; padding: 10px; border-radius: 10px; font-size: 12px; color: #9ca3af; white-space: pre-wrap; margin-top: 8px; border: 1px solid #111; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #374151; position: absolute; top: 14px; right: 14px; }
-        .selected .status-dot { background: #3b82f6; border-color: #fff; }
+        body { background: #05070a; color: #e2e8f0; font-family: sans-serif; }
+        .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        .bill-card { background: #1a2234; border: 2px solid #3b82f6; border-radius: 16px; padding: 15px; }
+        .history-card { background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 10px; opacity: 0.8; }
+        pre { background: #000; padding: 8px; border-radius: 8px; font-size: 11px; color: #94a3b8; white-space: pre-wrap; margin: 8px 0; }
+        button { font-weight: 800; text-transform: uppercase; font-size: 10px; height: 42px; border-radius: 8px; transition: 0.2s; }
+        .btn-settle { background: #10b981; color: white; flex: 1; }
     </style>
 </head>
-<body class="p-4 pb-24">
+<body class="p-4 pb-32">
 
-    <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#05070a] z-50 py-2">
-        <div>
-            <h1 class="text-xl font-black text-white italic tracking-tighter">POS TERMINAL</h1>
-            <p class="text-[10px] text-blue-500 font-bold uppercase">Mobile Optimized</p>
-        </div>
-        <button onclick="loadOrders()" class="bg-slate-800 p-3 rounded-full text-white shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>
-        </button>
+    <header class="flex justify-between items-center mb-6 border-b border-slate-900 pb-4">
+        <h1 class="text-xl font-black italic text-white">POS TERMINAL</h1>
+        <button onclick="loadOrders()" class="bg-blue-600 text-white px-6 rounded-full">REFRESH</button>
     </header>
 
-    <div class="flex justify-between items-end mb-4">
-        <h2 class="text-xs font-bold text-orange-500 uppercase tracking-widest">Incoming Orders</h2>
-        <button onclick="mergeSelected()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-black text-[10px] shadow-lg shadow-green-900/40">
-            MERGE SELECTED
-        </button>
-    </div>
-    
-    <div id="incomingContainer" class="order-grid mb-10">
-        </div>
+    <h2 class="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-3">1. New Incoming</h2>
+    <div id="incomingContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10"></div>
 
-    <hr class="border-slate-900 mb-8">
+    <h2 class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">2. Active Table Bills</h2>
+    <div id="mergedContainer" class="flex flex-col gap-4 mb-10"></div>
 
-    <h2 class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-4">Active Table Billing</h2>
-    <div id="mergedContainer" class="flex flex-col gap-6">
+    <hr class="border-slate-800 mb-10">
+
+    <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">3. History (Today's Settled)</h2>
+    <div id="historyContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
         </div>
 
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-let linkedBills = JSON.parse(localStorage.getItem('pos_mobile_bills')) || {}; 
-let processedIds = JSON.parse(localStorage.getItem('pos_mobile_processed')) || [];
-let selectedOrders = [];
+let activeBills = JSON.parse(localStorage.getItem('pos_active_v5')) || {};
+let processedIds = JSON.parse(localStorage.getItem('pos_ids_v5')) || [];
+let historyBills = JSON.parse(localStorage.getItem('pos_history_v5')) || [];
 
 async function loadOrders() {
     try {
@@ -65,110 +48,104 @@ async function loadOrders() {
         const rows = text.split('\n').map(r => r.split(',').map(c => c.replace(/"/g, '').trim()));
         
         const h = rows[0];
-        const tIdx = h.indexOf("Timestamp");
-        const bIdx = h.indexOf("TABLE NO.");
-        const iIdx = h.indexOf("ITEMS");
-        const mIdx = h.indexOf("TOTAL MOUNT");
+        const tIdx = h.findIndex(x => x.includes("Timestamp"));
+        const bIdx = h.findIndex(x => x.includes("TABLE"));
+        const iIdx = h.findIndex(x => x.includes("ITEMS"));
+        const mIdx = h.findIndex(x => x.includes("MOUNT") || x.includes("TOTAL"));
 
-        const container = document.getElementById("incomingContainer");
-        container.innerHTML = "";
+        const incomingDiv = document.getElementById("incomingContainer");
+        incomingDiv.innerHTML = "";
 
         for (let i = rows.length - 1; i >= 1; i--) {
             let d = rows[i];
             if (d.length < 3) continue;
-            let id = (d[tIdx] + d[bIdx]).replace(/\s+/g, '');
-            
-            if (!processedIds.includes(id)) {
-                let isSel = selectedOrders.find(o => o.id === id);
-                // Fix Undefined Price: ensures it's a number
-                let price = parseFloat(d[mIdx]) || 0;
+            let orderId = (d[tIdx] + d[bIdx]).replace(/\s+/g, '');
 
-                container.innerHTML += `
-                    <div class="card ${isSel ? 'selected' : ''}" id="card-${id}" onclick="toggleSelect('${id}', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}', ${price})">
-                        <div class="status-dot"></div>
-                        <div class="flex flex-col">
-                            <span class="text-slate-400 text-[10px] font-bold uppercase">${d[bIdx]}</span>
-                            <span class="text-xl font-black text-white">₹${price}</span>
-                        </div>
+            if (!processedIds.includes(orderId)) {
+                let price = parseFloat(d[mIdx]) || 0;
+                incomingDiv.innerHTML += `
+                    <div class="card border-l-4 border-l-orange-500">
+                        <div class="flex justify-between font-bold"><span>${d[bIdx]}</span><span class="text-green-400">₹${price}</span></div>
                         <pre>${d[iIdx]}</pre>
-                        <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button class="btn-action bg-orange-600/20 text-orange-500 border border-orange-600/30" onclick="event.stopPropagation(); printDoc('KOT', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}')">KOT</button>
-                            <button class="btn-action bg-slate-800 text-white" onclick="event.stopPropagation(); printDoc('BILL', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}', ${price})">PRINT</button>
+                        <div class="flex gap-2">
+                            <button class="bg-slate-800 text-white flex-1" onclick="printDoc('KOT', '${d[bIdx]}', '${encodeURIComponent(d[iIdx])}')">KOT</button>
+                            <button class="bg-blue-600 text-white flex-1" onclick="linkToBill('${d[bIdx]}', '${encodeURIComponent(d[iIdx])}', ${price}, '${orderId}')">Link Bill +</button>
                         </div>
                     </div>`;
             }
         }
-        renderMergedBills();
+        renderActive();
+        renderHistory();
     } catch (e) { console.error("Sync Error"); }
 }
 
-function toggleSelect(id, table, items, price) {
-    let idx = selectedOrders.findIndex(o => o.id === id);
-    if (idx > -1) {
-        selectedOrders.splice(idx, 1);
-        document.getElementById('card-'+id).classList.remove('selected');
-    } else {
-        selectedOrders.push({id, table, items: decodeURIComponent(items), price});
-        document.getElementById('card-'+id).classList.add('selected');
-    }
-}
-
-function mergeSelected() {
-    if (selectedOrders.length === 0) return alert("Select orders first");
-    let target = prompt("Table Number for merged bill?", selectedOrders[0].table);
-    if (!target) return;
-    if (!linkedBills[target]) linkedBills[target] = { items: [], total: 0 };
-    selectedOrders.forEach(o => {
-        linkedBills[target].items.push(o.items);
-        linkedBills[target].total += o.price;
-        processedIds.push(o.id);
-    });
-    selectedOrders = [];
+function linkToBill(table, items, price, id) {
+    if (!activeBills[table]) activeBills[table] = { items: [], total: 0, ids: [] };
+    activeBills[table].items.push(decodeURIComponent(items));
+    activeBills[table].total += price;
+    activeBills[table].ids.push(id);
+    processedIds.push(id);
     save(); loadOrders();
 }
 
-function renderMergedBills() {
-    const desk = document.getElementById("mergedContainer");
-    desk.innerHTML = "";
-    for (let t in linkedBills) {
-        let b = linkedBills[t];
-        desk.innerHTML += `
-            <div class="card bg-gradient-to-br from-gray-900 to-black border-blue-900/50 shadow-2xl">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-2xl font-black text-white">${t}</h3>
-                    <span class="text-[9px] bg-blue-600 text-white px-2 py-1 rounded font-bold">MERGED BILL</span>
-                </div>
-                <div class="bg-black/50 p-4 rounded-xl text-xs text-slate-400 mb-4 border border-white/5">
-                    ${b.items.map(i => `<div class='border-b border-white/5 py-2 last:border-0'>${i}</div>`).join('')}
-                </div>
-                <div class="flex justify-between items-center mb-6">
-                    <span class="text-sm font-bold text-slate-500">TOTAL</span>
-                    <span class="text-3xl font-black text-green-400">₹${b.total}</span>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <button class="btn-action bg-white text-black" onclick="printFinal('${t}')">FINAL BILL</button>
-                    <button class="btn-action bg-red-600 text-white" onclick="settle('${t}')">SETTLE</button>
+function renderActive() {
+    const container = document.getElementById("mergedContainer");
+    container.innerHTML = "";
+    for (let t in activeBills) {
+        let b = activeBills[t];
+        container.innerHTML += `
+            <div class="bill-card">
+                <div class="flex justify-between mb-3"><h3 class="text-xl font-black text-white">${t}</h3><span class="text-2xl font-black text-green-400">₹${b.total}</span></div>
+                <pre>${b.items.join('\n---\n')}</pre>
+                <div class="flex gap-2">
+                    <button class="bg-white text-black flex-1" onclick="printDoc('FINAL', '${t}', '${encodeURIComponent(b.items.join('\n'))}', ${b.total})">Print</button>
+                    <button class="btn-settle" onclick="moveToHistory('${t}')">SETTLE (Move to History)</button>
                 </div>
             </div>`;
     }
 }
 
-function printDoc(type, table, items, price = 0) {
+function renderHistory() {
+    const container = document.getElementById("historyContainer");
+    container.innerHTML = "";
+    // Show last 10 settled bills
+    historyBills.slice(-10).reverse().forEach(hb => {
+        container.innerHTML += `
+            <div class="history-card">
+                <div class="flex justify-between text-[10px] text-slate-400 mb-1"><span>Table: ${hb.table}</span><span>${hb.time}</span></div>
+                <div class="font-bold text-green-500 text-sm">₹${hb.total} Settled</div>
+            </div>`;
+    });
+}
+
+function moveToHistory(t) {
+    if (confirm("Settle Table " + t + " and move to History?")) {
+        let billData = activeBills[t];
+        historyBills.push({
+            table: t,
+            total: billData.total,
+            items: billData.items,
+            time: new Date().toLocaleTimeString()
+        });
+        delete activeBills[t];
+        save(); loadOrders();
+    }
+}
+
+function printDoc(type, table, items, total = 0) {
     let w = window.open("");
-    w.document.write(`<div style="font-family:sans-serif; width:280px;"><h2>${type}</h2><h1>${table}</h1><hr><pre>${decodeURIComponent(items)}</pre>${price ? '<hr><h3>Total: ₹'+price+'</h3>' : ''}</div>`);
+    w.document.write(`<div style="font-family:monospace;width:280px;"><h2>${type}</h2><h1>${table}</h1><hr><pre>${decodeURIComponent(items)}</pre>${total ? '<hr><h3>Total: ₹'+total+'</h3>' : ''}</div>`);
     w.print(); w.close();
 }
 
-function printFinal(t) {
-    let b = linkedBills[t];
-    let w = window.open("");
-    w.document.write(`<div style="font-family:sans-serif; width:280px;"><h2>FINAL</h2><h1>${t}</h1><hr>${b.items.join('<br>')}<hr><h2>Total: ₹${b.total}</h2></div>`);
-    w.print(); w.close();
+function save() {
+    localStorage.setItem('pos_active_v5', JSON.stringify(activeBills));
+    localStorage.setItem('pos_ids_v5', JSON.stringify(processedIds));
+    localStorage.setItem('pos_history_v5', JSON.stringify(historyBills));
 }
 
-function settle(t) { if (confirm("Clear " + t + "?")) { delete linkedBills[t]; save(); loadOrders(); } }
-function save() { localStorage.setItem('pos_mobile_bills', JSON.stringify(linkedBills)); localStorage.setItem('pos_mobile_processed', JSON.stringify(processedIds)); }
 loadOrders();
+setInterval(loadOrders, 15000);
 </script>
 </body>
 </html>
