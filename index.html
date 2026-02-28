@@ -3,57 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Restaurant - Order Online</title>
+    <title>My Restaurant Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .menu-card { transition: all 0.2s ease; }
-        .details-box { transition: max-height 0.3s ease-out; overflow: hidden; }
-        /* गूगल शीट में डेटा को सही दिखाने के लिए न्यूलाइन सपोर्ट */
-        .white-space-pre { white-space: pre-wrap; }
-    </style>
 </head>
-<body class="bg-gray-50 font-sans pb-44">
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
+<body class="bg-gray-100 font-sans pb-44">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative">
         
-        <div class="bg-gradient-to-r from-red-600 to-red-700 p-8 text-white text-center rounded-b-[3rem] shadow-xl">
-            <h1 class="text-4xl font-black italic tracking-tighter uppercase">My Restaurant</h1>
-            <p class="text-[10px] font-bold opacity-80 mt-1 tracking-[0.3em] uppercase">Order Fresh • Eat Fresh</p>
+        <div class="bg-red-600 p-6 text-white text-center rounded-b-[2.5rem] shadow-md">
+            <h1 class="text-3xl font-black italic tracking-tighter uppercase">My Restaurant</h1>
+            <p class="text-[10px] opacity-90 mt-1 uppercase tracking-widest">Delicious & Fresh Food</p>
         </div>
 
         <div class="p-6">
-            <label class="block text-gray-400 text-[10px] font-black mb-1 uppercase tracking-widest ml-1">Select Table Number</label>
-            <select id="tableNo" class="w-full p-4 border-2 border-red-50 rounded-2xl bg-gray-50 font-black text-red-600 text-xl appearance-none outline-none focus:ring-2 focus:ring-red-500 shadow-inner">
-                <option value="1">Table 01</option>
-                <option value="2">Table 02</option>
-                <option value="3">Table 03</option>
-                <option value="4">Table 04</option>
-                <option value="5">Table 05</option>
-                <option value="6">Table 06</option>
-                <option value="7">Table 07</option>
-                <option value="8">Table 08</option>
-                <option value="9">Table 09</option>
-                <option value="10">Table 10</option>
+            <label class="block text-gray-500 text-[10px] font-black mb-1 uppercase tracking-widest ml-1">Select Table</label>
+            <select id="tableNo" class="w-full p-4 border-2 border-red-50 rounded-2xl bg-gray-50 font-bold text-red-600 outline-none shadow-sm appearance-none">
+                <option value="1">Table No. 1</option>
+                <option value="2">Table No. 2</option>
+                <option value="3">Table No. 3</option>
+                <option value="4">Table No. 4</option>
+                <option value="5">Table No. 5</option>
+                <option value="6">Table No. 6</option>
+                <option value="7">Table No. 7</option>
+                <option value="8">Table No. 8</option>
+                <option value="9">Table No. 9</option>
+                <option value="10">Table No. 10</option>
             </select>
         </div>
 
         <div id="menuList" class="px-6 space-y-4">
-            <div class="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest">
-                <i class="fas fa-spinner animate-spin mb-2"></i><br>Loading Menu...
-            </div>
+            <p class="text-center py-10 text-gray-400 animate-pulse uppercase text-xs font-bold">Loading Menu...</p>
         </div>
 
-        <div class="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md p-6 border-t border-gray-100 shadow-[0_-15px_35px_rgba(0,0,0,0.1)] rounded-t-[3rem]">
-            <div class="flex justify-between items-end mb-5 px-2">
+        <div class="fixed bottom-0 max-w-md w-full bg-white p-6 border-t shadow-[0_-15px_35px_rgba(0,0,0,0.1)] rounded-t-[2.5rem]">
+            <div class="flex justify-between items-center mb-5 px-2">
                 <div>
-                    <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Payable</p>
-                    <p class="text-4xl font-black text-gray-900 leading-none">₹<span id="totalDisplay">0</span></p>
+                    <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Total Bill</p>
+                    <p class="text-3xl font-black text-gray-900 leading-none">₹<span id="totalDisplay">0</span></p>
                 </div>
                 <div id="cartStatus" class="hidden">
-                    <span id="itemCount" class="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase italic shadow-lg shadow-red-200">0 Items</span>
+                    <span id="itemCount" class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">0 Items</span>
                 </div>
             </div>
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all uppercase tracking-widest">Confirm Order</button>
+            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest">Confirm Order</button>
         </div>
     </div>
 
@@ -79,38 +71,35 @@
                     const name = cols[0].replace(/"/g, '').trim();
                     const price = parseInt(cols[1].replace(/"/g, '').trim());
                     const img = cols[2] ? cols[2].replace(/"/g, '').trim() : "";
-                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "स्वादिष्ट व्यंजन।";
+                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "Delicious food prepared fresh.";
 
                     if(name && !isNaN(price)) {
                         menuData.push({name, price});
                         container.innerHTML += `
-                            <div class="menu-card bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden mb-4">
+                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-4">
                                 <div class="flex p-4 items-center">
-                                    <img src="${img}" class="w-20 h-20 object-cover rounded-2xl bg-gray-50 shadow-inner" onerror="this.src='https://via.placeholder.com/100?text=Food'">
+                                    <img src="${img}" class="w-16 h-16 object-cover rounded-2xl shadow-inner bg-gray-50" onerror="this.src='https://via.placeholder.com/100?text=Food'">
                                     <div class="ml-4 flex-1">
-                                        <h3 class="font-black text-gray-800 text-base leading-tight">${name}</h3>
-                                        <p class="text-red-600 font-black text-lg mt-1">₹${price}</p>
+                                        <h3 class="font-bold text-gray-800 text-sm leading-tight">${name}</h3>
+                                        <p class="text-red-600 font-black text-sm mt-1">₹${price}</p>
                                     </div>
-                                    <div class="flex items-center bg-gray-100 rounded-2xl p-1 shadow-inner">
-                                        <button onclick="updateQty('${name}', -1)" class="w-9 h-9 bg-white rounded-xl shadow-sm text-gray-400 font-bold">-</button>
-                                        <span id="qty-${name}" class="px-4 font-black text-gray-800 text-sm">0</span>
-                                        <button onclick="updateQty('${name}', 1)" class="w-9 h-9 bg-red-600 rounded-xl shadow-md text-white font-bold">+</button>
+                                    <div class="flex items-center bg-gray-100 rounded-xl p-1">
+                                        <button onclick="updateQty('${name}', -1)" class="w-8 h-8 bg-white rounded-lg shadow-sm text-gray-400 font-bold">-</button>
+                                        <span id="qty-${name}" class="px-3 font-black text-gray-800 text-xs">0</span>
+                                        <button onclick="updateQty('${name}', 1)" class="w-8 h-8 bg-red-600 rounded-lg shadow-sm text-white font-bold">+</button>
                                     </div>
                                 </div>
-                                
-                                <button onclick="toggleDetails(${index})" class="w-full bg-gray-50/50 py-2 text-[10px] font-black text-gray-400 flex items-center justify-center gap-2 uppercase tracking-widest border-t border-gray-50">
-                                    Product Info <i id="icon-${index}" class="fas fa-chevron-down transition-transform duration-300"></i>
+                                <button onclick="toggleDetails(${index})" class="w-full bg-gray-50/50 py-1 text-[9px] font-bold text-gray-400 flex items-center justify-center gap-1 uppercase border-t border-gray-50">
+                                    View Details <i id="icon-${index}" class="fas fa-chevron-down transition-transform"></i>
                                 </button>
-                                <div id="details-${index}" class="hidden px-6 py-4 text-[12px] text-gray-500 bg-gray-50 border-t border-gray-100 italic leading-relaxed">
+                                <div id="details-${index}" class="hidden px-5 py-3 text-[11px] text-gray-500 bg-gray-50 border-t border-gray-100 italic">
                                     ${desc}
                                 </div>
                             </div>
                         `;
                     }
                 });
-            } catch (e) {
-                document.getElementById('menuList').innerHTML = "Menu Load Error!";
-            }
+            } catch (e) { container.innerHTML = "Error!"; }
         }
 
         function toggleDetails(id) {
@@ -144,31 +133,34 @@
 
         function placeOrder() {
             let orderLines = [];
-            let grandTotal = 0;
+            let totalBill = 0;
             
             for (let name in cart) {
                 if(cart[name] > 0) {
                     let item = menuData.find(m => m.name === name);
                     let subtotal = item.price * cart[name];
-                    // फॉर्मेट: Item (Qty) - ₹Total
-                    orderLines.push(`${name} (x${cart[name]}) - ₹${subtotal}`);
-                    grandTotal += subtotal;
+                    
+                    // अब यह डेटा एक के नीचे एक जाएगा
+                    // Chicken Biriyani (x1)
+                    // @₹100 = ₹100
+                    orderLines.push(`${name} (x${cart[name]})\n@₹${item.price} = ₹${subtotal}`);
+                    totalBill += subtotal;
                 }
             }
 
             if(orderLines.length === 0) return alert("Please select items!");
 
-            // '\n' का इस्तेमाल ताकि शीट में एक के नीचे एक दिखे
-            const finalOrderString = orderLines.join("\n");
+            // '\n' का मतलब नई लाइन है। इससे शीट में डेटा एक के नीचे एक आएगा।
+            const finalString = orderLines.join("\n\n"); 
 
             const table = document.getElementById('tableNo').value;
             const btn = document.getElementById('orderBtn');
             btn.disabled = true; btn.innerText = "Processing...";
 
             const formData = new URLSearchParams();
-            formData.append('entry.1750325692', "Table No. " + table);
-            formData.append('entry.732456507', finalOrderString);
-            formData.append('entry.424181828', grandTotal);
+            formData.append('entry.1750325692', "Table " + table);
+            formData.append('entry.732456507', finalString); 
+            formData.append('entry.424181828', totalBill);
 
             fetch(FORM_URL, {
                 method: 'POST',
@@ -177,7 +169,7 @@
                 body: formData.toString()
             })
             .then(() => {
-                alert("Order Placed Successfully! ✅");
+                alert("Order Placed! ✅ Check your sheet.");
                 location.reload();
             });
         }
