@@ -3,60 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Restaurant - Order Online</title>
+    <title>My Restaurant Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .menu-card { transition: transform 0.2s; }
-        .menu-card:active { transform: scale(0.95); }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50">
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
-        <div class="bg-gradient-to-r from-red-600 to-red-700 p-8 text-white text-center rounded-b-[3rem] shadow-xl">
-            <h1 class="text-4xl font-black tracking-tighter italic">MY RESTAURANT</h1>
-            <p class="text-sm font-medium opacity-90 mt-1">Deliciousness Delivered to Your Table</p>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-40">
+        
+        <div class="bg-red-600 p-6 text-white text-center rounded-b-[2rem] shadow-md">
+            <h1 class="text-3xl font-black tracking-tighter italic">MY RESTAURANT</h1>
+            <p class="text-xs opacity-90 mt-1 uppercase tracking-widest">Order Your Favorites</p>
         </div>
 
-        <div class="p-6">
-            <label class="block text-gray-800 font-extrabold text-sm mb-2 uppercase tracking-wider text-center">Select Your Table Number</label>
-            <select id="tableNo" class="w-full p-4 border-2 border-red-100 rounded-2xl bg-red-50 font-black text-center text-xl text-red-600 appearance-none focus:border-red-500 transition-all outline-none shadow-sm">
-                <option value="1">Table 01</option>
-                <option value="2">Table 02</option>
-                <option value="3">Table 03</option>
-                <option value="4">Table 04</option>
-                <option value="5">Table 05</option>
+        <div class="p-4">
+            <label class="block text-gray-700 text-xs font-bold mb-1 uppercase ml-1">Select Table Number</label>
+            <select id="tableNo" class="w-full p-3 border-2 border-red-100 rounded-xl bg-red-50 font-bold text-red-600 outline-none focus:border-red-500 appearance-none shadow-sm">
+                <script>
+                    for(let i=1; i<=10; i++) {
+                        document.write(`<option value="${i}">Table No. ${i}</option>`);
+                    }
+                </script>
             </select>
         </div>
 
-        <div class="px-6 pb-44">
-            <h2 class="text-xl font-black text-gray-800 mb-4 border-l-4 border-red-600 pl-3">TODAY'S MENU</h2>
-            <div id="menuList" class="space-y-4">
-                <p class="text-center py-10 text-gray-400 animate-pulse">Loading items...</p>
-            </div>
+        <div id="menuList" class="px-4 space-y-4">
+            <p class="text-center py-10 text-gray-400">Loading delicious food...</p>
         </div>
 
-        <div class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md p-6 border-t border-gray-100 shadow-[0_-10px_25px_rgba(0,0,0,0.05)] rounded-t-[2.5rem]">
-            <div class="flex justify-between items-end mb-5 px-2">
+        <div class="fixed bottom-0 max-w-md w-full bg-white p-5 border-t shadow-[0_-10px_20px_rgba(0,0,0,0.05)] rounded-t-3xl">
+            <div class="flex justify-between items-center mb-4 px-2">
                 <div>
-                    <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Total Amount</p>
-                    <p class="text-3xl font-black text-gray-900">₹<span id="totalDisplay">0</span></p>
+                    <p class="text-gray-400 text-[10px] font-bold uppercase">Total Bill</p>
+                    <p class="text-2xl font-black text-gray-900">₹<span id="totalDisplay">0</span></p>
                 </div>
-                <div class="text-right">
-                    <span id="itemCount" class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-black">0 ITEMS</span>
+                <div id="cartStatus" class="text-right hidden text-xs font-bold text-red-600">
+                    <span id="itemCount">0</span> ITEMS ADDED
                 </div>
             </div>
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-xl shadow-lg shadow-red-200 active:scale-95 transition-all duration-200 uppercase tracking-widest">Confirm Order</button>
+            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all uppercase">Place Order</button>
         </div>
     </div>
 
     <script>
-        // आपकी नई वाली मेनू शीट का लिंक
-        const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Menu";
-        // आपका पुराना फॉर्म लिंक
-        const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
+        const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
+        const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
         
-        let cart = [];
-        let total = 0;
+        let cart = {};
+        let menuData = [];
 
         async function loadMenu() {
             try {
@@ -66,53 +59,90 @@
                 const container = document.getElementById('menuList');
                 container.innerHTML = "";
 
-                rows.forEach(row => {
+                rows.forEach((row, index) => {
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    if(cols.length < 3) return;
+
                     const name = cols[0].replace(/"/g, '').trim();
                     const price = parseInt(cols[1].replace(/"/g, '').trim());
-                    
+                    const img = cols[2].replace(/"/g, '').trim();
+                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "";
+
                     if(name && !isNaN(price)) {
+                        menuData.push({name, price});
                         container.innerHTML += `
-                            <div class="menu-card flex items-center justify-between bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                <div>
-                                    <h3 class="font-bold text-gray-800 text-lg">${name}</h3>
-                                    <p class="text-red-600 font-black text-xl">₹${price}</p>
+                            <div class="flex bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                                <img src="${img}" class="w-24 h-24 object-cover bg-gray-100" onerror="this.src='https://via.placeholder.com/100?text=Food'">
+                                <div class="p-3 flex-1 flex flex-col justify-between">
+                                    <div>
+                                        <h3 class="font-bold text-gray-800 leading-tight">${name}</h3>
+                                        <p class="text-[10px] text-gray-400 line-clamp-1">${desc}</p>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-2">
+                                        <span class="font-black text-red-600">₹${price}</span>
+                                        <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                                            <button onclick="updateQty('${name}', -1)" class="w-7 h-7 bg-white rounded-md shadow-sm text-gray-600 font-bold">-</button>
+                                            <span id="qty-${name}" class="px-3 font-bold text-sm">0</span>
+                                            <button onclick="updateQty('${name}', 1)" class="w-7 h-7 bg-red-600 rounded-md shadow-sm text-white font-bold">+</button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button onclick="addToCart('${name}', ${price})" class="bg-gray-900 text-white h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-2xl shadow-lg active:bg-red-600 transition-colors">+</button>
                             </div>
                         `;
                     }
                 });
-            } catch (e) {
-                document.getElementById('menuList').innerHTML = "Error loading menu. Please check Sheet tab name.";
-            }
+            } catch (e) { container.innerHTML = "Sheet Link Error!"; }
         }
 
-        function addToCart(name, price) {
-            cart.push(name);
-            total += price;
+        function updateQty(name, change) {
+            if (!cart[name]) cart[name] = 0;
+            cart[name] += change;
+            if (cart[name] < 0) cart[name] = 0;
+            
+            document.getElementById(`qty-${name}`).innerText = cart[name];
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            let count = 0;
+            for (let name in cart) {
+                if(cart[name] > 0) {
+                    let item = menuData.find(m => m.name === name);
+                    total += (item.price * cart[name]);
+                    count += cart[name];
+                }
+            }
             document.getElementById('totalDisplay').innerText = total;
-            document.getElementById('itemCount').innerText = `${cart.length} ITEMS`;
+            document.getElementById('itemCount').innerText = count;
+            document.getElementById('cartStatus').style.display = count > 0 ? 'block' : 'none';
         }
 
         function placeOrder() {
-            if(cart.length === 0) return alert("Please select some items first!");
+            let orderSummary = [];
+            let totalBill = 0;
+            for (let name in cart) {
+                if(cart[name] > 0) {
+                    orderSummary.push(`${name} (x${cart[name]})`);
+                    let item = menuData.find(m => m.name === name);
+                    totalBill += (item.price * cart[name]);
+                }
+            }
+
+            if(orderSummary.length === 0) return alert("Please add some items!");
+
             const table = document.getElementById('tableNo').value;
-            const items = cart.join(", ");
             const btn = document.getElementById('orderBtn');
-            
-            btn.disabled = true;
-            btn.innerText = "SENDING...";
+            btn.disabled = true; btn.innerText = "Sending...";
 
             const formData = new FormData();
             formData.append('entry.1750325692', table);
-            formData.append('entry.732456507', items);
-            formData.append('entry.424181828', total);
+            formData.append('entry.732456507', orderSummary.join(", "));
+            formData.append('entry.424181828', totalBill);
 
-            fetch(FORM_ACTION, { method: 'POST', mode: 'no-cors', body: formData })
+            fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
             .then(() => {
-                alert("Order Placed Successfully! ✅");
-                cart = []; total = 0;
+                alert("Order Sent to Kitchen! ✅");
                 location.reload();
             });
         }
