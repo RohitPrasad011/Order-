@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>POS Admin Pro - Final</title>
+<title>Royal Food Corner - POS Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
@@ -16,7 +16,6 @@ button { font-weight:700; font-size:11px; height:38px; border-radius:8px; paddin
 .btn-print { background:#3b82f6; color:white; flex:1; }
 .btn-save { background:#eab308; color:black; flex:1; }
 .badge { background:#ef4444; padding:2px 8px; border-radius:20px; font-size:12px; }
-pre { background:#000; padding:8px; border-radius:6px; font-size:13px; white-space:pre-wrap; }
 
 @media print {
   body * { visibility:hidden; }
@@ -28,24 +27,16 @@ pre { background:#000; padding:8px; border-radius:6px; font-size:13px; white-spa
 
 <body class="p-4 pb-40">
 
-<header class="sticky top-0 bg-black/80 backdrop-blur py-3 mb-6 border-b border-gray-800">
+<header class="sticky top-0 bg-black/80 py-3 mb-6 border-b border-gray-800">
 <div class="flex justify-between items-center mb-3">
-<h1 class="text-xl font-black">POS TERMINAL <span id="orderCount" class="badge">0</span></h1>
-<div class="flex gap-2">
-<button onclick="toggleSelectMode()" id="mergeBtn" class="bg-blue-600 text-white">MERGE</button>
-<button onclick="loadOrders()" class="bg-gray-700 text-white">REFRESH</button>
-</div>
+<h1 class="text-xl font-black">ROYAL FOOD CORNER <span id="orderCount" class="badge">0</span></h1>
+<button onclick="loadOrders()" class="bg-gray-700 text-white px-3 rounded">REFRESH</button>
 </div>
 <input type="text" id="searchInput" onkeyup="filterOrders()" placeholder="Search Table..." class="w-full bg-gray-900 border border-gray-700 rounded-lg h-10 px-3">
 </header>
 
 <h2 class="text-xs text-orange-400 font-bold mb-3">Incoming Orders</h2>
 <div id="orderList" class="grid md:grid-cols-2 gap-4 mb-8"></div>
-
-<hr class="border-gray-800 my-6">
-
-<h2 class="text-xs text-blue-400 font-bold mb-3">Merged Table Bills</h2>
-<div id="mergedList" class="flex flex-col gap-4 mb-8"></div>
 
 <hr class="border-gray-800 my-6">
 
@@ -57,177 +48,114 @@ pre { background:#000; padding:8px; border-radius:6px; font-size:13px; white-spa
 
 <script>
 
-const SHEET_URL = "PASTE_YOUR_SHEET_CSV_LINK_HERE";
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
 
-let history = JSON.parse(localStorage.getItem('pos_history_v14')) || [];
-let mergedBills = JSON.parse(localStorage.getItem('pos_merged_v14')) || {};
-let selectedItems = [];
-let isSelecting = false;
+let history = JSON.parse(localStorage.getItem('pos_history')) || [];
 let lastLiveCount = 0;
 
 function cleanupHistory(){
   const now = Date.now();
   history = history.filter(h => now - h.saveTime < 86400000);
-  localStorage.setItem('pos_history_v14', JSON.stringify(history));
+  localStorage.setItem('pos_history', JSON.stringify(history));
 }
 
 async function loadOrders(){
   cleanupHistory();
-  try{
-    const res = await fetch(SHEET_URL + "&t=" + Date.now());
-    const text = await res.text();
-    const rows = text.split('\n').map(r => r.split(',').map(c => c.replace(/"/g,'').trim()));
-    const headers = rows[0];
+  const res = await fetch(SHEET_URL + "&t=" + Date.now());
+  const text = await res.text();
 
-    const tIdx = headers.findIndex(h => h.toUpperCase().includes("TABLE"));
-    const iIdx = headers.findIndex(h => h.toUpperCase().includes("ITEM"));
-    const pIdx = headers.findIndex(h => h.toUpperCase().includes("TOTAL") || h.toUpperCase().includes("AMOUNT"));
-    const timeIdx = headers.findIndex(h => h.toUpperCase().includes("TIMESTAMP"));
+  const rows = text.split('\n').map(r => r.split(','));
+  const headers = rows[0].map(h=>h.trim().toUpperCase());
 
-    const incomingDiv = document.getElementById("orderList");
-    const historyDiv = document.getElementById("historyList");
-    incomingDiv.innerHTML = "";
-    historyDiv.innerHTML = "";
+  const tIdx = headers.findIndex(h => h.includes("TABLE"));
+  const timeIdx = headers.findIndex(h => h.includes("TIMESTAMP"));
 
-    let liveCount = 0;
+  const orderList = document.getElementById("orderList");
+  const historyList = document.getElementById("historyList");
 
-    for(let i = rows.length-1; i>=1; i--){
-      const table = rows[i][tIdx];
-      const items = rows[i][iIdx] || "";
-      const amount = parseFloat(rows[i][pIdx]) || 0;
-      const time = rows[i][timeIdx] || "";
-      if(!table) continue;
+  orderList.innerHTML="";
+  historyList.innerHTML="";
 
-      const id = (table+time).replace(/\s/g,'');
-      const inHistory = history.find(h=>h.id===id);
-      const isSelected = selectedItems.find(s=>s.id===id);
+  let liveCount=0;
 
-      const card = `
-      <div class="card ${inHistory?'history-card':''} ${isSelected?'selected-card':''}">
-        <div class="flex justify-between">
-          <span class="font-bold">${table}</span>
-          <span class="text-green-400 font-bold">₹${amount}</span>
-        </div>
-        <pre>${items}</pre>
-        <div class="flex gap-2 mt-3 flex-wrap">
-          <button class="btn-kot" onclick="printDoc('KOT','${table}','${encodeURIComponent(items)}')">KOT</button>
-          <button class="btn-print" onclick="printDoc('BILL','${table}','${encodeURIComponent(items)}',${amount})">PRINT</button>
-          ${!inHistory?`<button class="btn-save" onclick="saveHistory('${id}','${table}','${encodeURIComponent(items)}',${amount})">SAVE</button>`:''}
-          ${isSelecting && !inHistory?`<button class="bg-purple-600 text-white flex-1" onclick="selectForMerge('${id}','${table}','${encodeURIComponent(items)}',${amount})">${isSelected?'DESELECT':'SELECT'}</button>`:''}
-        </div>
-      </div>`;
+  for(let i=rows.length-1;i>=1;i--){
+    const row = rows[i];
+    if(!row[tIdx]) continue;
 
-      if(inHistory) historyDiv.innerHTML+=card;
-      else { incomingDiv.innerHTML+=card; liveCount++; }
+    const table = row[tIdx];
+    const time = row[timeIdx] || "";
+    const id = (table+time).replace(/\s/g,'');
+
+    let itemsHTML="";
+    let total=0;
+
+    // Automatically detect item columns
+    for(let c=0;c<headers.length;c++){
+      if(headers[c].includes("ITEM")){
+        const name=row[c];
+        const qty=row[c+1];
+        const price=row[c+2];
+        if(name){
+          itemsHTML+=`${name} x${qty} - ₹${price}\n`;
+          total+=parseFloat(price||0);
+        }
+      }
     }
 
-    if(liveCount>lastLiveCount && lastLiveCount!==0) document.getElementById('beep').play();
-    lastLiveCount=liveCount;
-    document.getElementById("orderCount").innerText=liveCount;
-    renderMerged();
+    const inHistory = history.find(h=>h.id===id);
 
-  }catch(e){console.log(e);}
-}
-
-function saveHistory(id,table,items,amount){
-  history.push({id,table,items:decodeURIComponent(items),amount,saveTime:Date.now()});
-  localStorage.setItem('pos_history_v14',JSON.stringify(history));
-  loadOrders();
-}
-
-function toggleSelectMode(){
-  isSelecting=!isSelecting;
-  selectedItems=[];
-  document.getElementById("mergeBtn").innerText=isSelecting?"CANCEL":"MERGE";
-  loadOrders();
-}
-
-function selectForMerge(id,table,items,amount){
-  const idx=selectedItems.findIndex(s=>s.id===id);
-  if(idx>-1) selectedItems.splice(idx,1);
-  else selectedItems.push({id,table,items:decodeURIComponent(items),amount});
-  if(selectedItems.length>=2){
-    const target=prompt("Merge Into Table:",selectedItems[0].table);
-    if(!target) return;
-    if(!mergedBills[target]) mergedBills[target]={items:[],total:0};
-    selectedItems.forEach(o=>{
-      mergedBills[target].items.push(o.items);
-      mergedBills[target].total+=o.amount;
-      history.push({id:o.id,table:o.table,items:o.items,amount:o.amount,saveTime:Date.now()});
-    });
-    localStorage.setItem('pos_merged_v14',JSON.stringify(mergedBills));
-    localStorage.setItem('pos_history_v14',JSON.stringify(history));
-    isSelecting=false; selectedItems=[];
-    document.getElementById("mergeBtn").innerText="MERGE";
-    loadOrders();
-  } else loadOrders();
-}
-
-function renderMerged(){
-  const div=document.getElementById("mergedList");
-  div.innerHTML="";
-  for(let t in mergedBills){
-    const bill=mergedBills[t];
-    div.innerHTML+=`
-    <div class="card border border-blue-600">
+    const card = `
+    <div class="card ${inHistory?'history-card':''}">
       <div class="flex justify-between">
-        <span class="font-bold">${t}</span>
-        <span class="text-green-400 font-bold">₹${bill.total}</span>
+        <span class="font-bold">${table}</span>
+        <span class="text-green-400 font-bold">₹${total}</span>
       </div>
-      <pre>${bill.items.join('\n---\n')}</pre>
+      <pre>${itemsHTML}</pre>
       <div class="flex gap-2 mt-3">
-        <button class="btn-print" onclick="printDoc('FINAL BILL','${t}','${encodeURIComponent(bill.items.join('\n'))}',${bill.total})">PRINT FINAL</button>
-        <button class="bg-red-600 text-white flex-1" onclick="clearTable('${t}')">SETTLE</button>
+        <button class="btn-kot" onclick="printDoc('KOT','${table}','${encodeURIComponent(itemsHTML)}')">KOT</button>
+        <button class="btn-print" onclick="printDoc('BILL','${table}','${encodeURIComponent(itemsHTML)}',${total})">PRINT</button>
+        ${!inHistory?`<button class="btn-save" onclick="saveHistory('${id}','${table}','${encodeURIComponent(itemsHTML)}',${total})">SAVE</button>`:''}
       </div>
     </div>`;
+
+    if(inHistory) historyList.innerHTML+=card;
+    else{ orderList.innerHTML+=card; liveCount++; }
   }
+
+  if(liveCount>lastLiveCount && lastLiveCount!==0){
+    document.getElementById("beep").play();
+  }
+
+  lastLiveCount=liveCount;
+  document.getElementById("orderCount").innerText=liveCount;
 }
 
-function clearTable(t){
-  if(confirm("Clear "+t+" ?")){
-    delete mergedBills[t];
-    localStorage.setItem('pos_merged_v14',JSON.stringify(mergedBills));
-    loadOrders();
-  }
+function saveHistory(id,table,items,total){
+  history.push({id,table,items:decodeURIComponent(items),total,saveTime:Date.now()});
+  localStorage.setItem('pos_history',JSON.stringify(history));
+  loadOrders();
 }
 
 function printDoc(type,table,items,total=0){
 
-  const restaurant="ROYAL FOOD CORNER";
-  const address="Asansol, West Bengal";
-  const phone="Ph: 9876543210";
-
-  const decoded=decodeURIComponent(items);
-  const lines=decoded.split('\n');
-  let rows="";
-
-  lines.forEach(line=>{
-    if(!line.trim()) return;
-    let qty=(line.match(/x\s*(\d+)/i)||["","1"])[1];
-    let price=(line.match(/(\d+(\.\d+)?)\s*$/)||["",""])[1];
-    let name=line.replace(/x\s*\d+/i,'').replace(/-?\s*\d+(\.\d+)?\s*$/,'').trim();
-    rows+=`<tr><td style="width:55%">${name}</td><td style="width:15%;text-align:center">${qty}</td><td style="width:30%;text-align:right">${price}</td></tr>`;
-  });
-
   const area=document.getElementById("printSection");
   area.style.display="block";
+
   area.innerHTML=`
-  <div style="width:280px;font-family:monospace;padding:8px;color:black;">
-    <div style="text-align:center;font-weight:bold;font-size:15px">${restaurant}</div>
-    <div style="text-align:center;font-size:12px">${address}<br>${phone}</div>
+  <div style="width:280px;font-family:monospace;padding:10px;">
+    <div style="text-align:center;font-weight:bold;font-size:16px">ROYAL FOOD CORNER</div>
+    <div style="text-align:center;font-size:12px">Asansol, West Bengal</div>
     <hr style="border-top:1px dashed black">
     <strong>${type}</strong><br>
     Table: ${table}<br>
     ${new Date().toLocaleString()}
     <hr style="border-top:1px dashed black">
-    <table style="width:100%;font-size:13px">
-      <tr><th style="text-align:left">Item</th><th>Qty</th><th style="text-align:right">Price</th></tr>
-      ${rows}
-    </table>
+    <pre style="font-size:13px">${decodeURIComponent(items)}</pre>
     ${total?`<hr style="border-top:1px dashed black"><div style="text-align:right;font-weight:bold">Total: ₹${total}</div>`:""}
     <hr style="border-top:1px dashed black">
     <div style="text-align:center">Thank You 🙏</div>
   </div>`;
+
   window.print();
   area.style.display="none";
 }
