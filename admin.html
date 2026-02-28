@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Royal Food POS - Pro v4</title>
+<title>Royal Food POS - Pro v4 (Fixed)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
@@ -18,10 +18,10 @@ button { font-weight:700; font-size:13px; height:42px; border-radius:10px; curso
 .btn-merge { background:#10b981; color:#fff; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; max-width:400px; display:none; height:55px; z-index:100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; font-family:monospace; font-size:14px; color:#cbd5e1; border:1px solid #1f2937; pointer-events:none; }
 
-/* 🔴🔥 UNIVERSAL PRINT ENGINE (NO DOUBLE PAGE) 🔥🔴 */
+/* 🔥 PRINTER SETTINGS (58mm / 80mm Thermal Printer) 🔥 */
 @media print {
     @page { margin: 0; size: auto; }
-    html, body { background: #fff !important; color: #000 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+    html, body { background: #fff !important; color: #000 !important; width: auto !important; margin: 0 !important; padding: 0 !important; height: auto !important; }
     body * { visibility: hidden !important; display: none !important; }
     
     #printSection, #printSection * { 
@@ -32,16 +32,22 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
     }
     
     #printSection { 
-        position: absolute; left: 0; top: 0; width: 100% !important; 
-        padding: 5mm !important; margin: 0 !important;
+        display: block !important;
+        position: absolute; 
+        left: 0; top: 0; 
+        width: 300px !important; /* Thermal Printer Width */
+        max-width: 300px !important;
+        margin: 0 auto !important;
+        padding: 5mm !important; 
         box-sizing: border-box;
-        page-break-inside: avoid !important; /* 🔥 दूसरे पन्ने पर जाने से रोकता है */
+        page-break-inside: avoid !important; 
+        font-family: "Courier New", Courier, monospace !important;
     }
     
-    .p-line { border-top: 1px dashed black !important; margin: 5px 0; width: 100%; }
+    .p-line { border-top: 1px dashed black !important; margin: 5px 0; width: 100% !important; }
 }
 
-#printSection { display: none; }
+#printSection { display: none; width: 300px; margin: 0 auto; }
 .hidden { display: none; }
 </style>
 </head>
@@ -71,7 +77,7 @@ pre { background:#000; padding:10px; border-radius:10px; white-space:pre-wrap; f
 
 <script>
 const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
-const HISTORY_KEY="royal_pos_v50"; // Version update
+const HISTORY_KEY="royal_pos_v50";
 
 let allOrders=[];
 let selected=[];
@@ -97,7 +103,7 @@ async function loadOrders(){
         const res=await fetch(SHEET_URL+"&t="+Date.now());
         const data=await res.text();
         const rows = parseCSV(data).filter(r=>r[1]&&r[1].toLowerCase()!=="table");
-        allOrders = rows.slice(-50); // Speed control
+        allOrders = rows.slice(-50);
         render();
     } catch(e) { console.log("Network Error"); }
 }
@@ -188,30 +194,31 @@ function printDoc(type,table,itemsEnc,total){
     const items=decodeURIComponent(itemsEnc).replace(/\\n/g,"\n");
     const area=document.getElementById("printSection");
 
+    // ✅ Fixed Print Layout for Thermal Printer
     area.innerHTML = `
-    <div style="width: 100%; font-family: monospace; color: black; background: white;">
+    <div style="width: 100%; font-family: 'Courier New', monospace; color: black; background: white; font-size: 14px;">
         <center>
-            <b style="font-size: 22px;">ROYAL FOOD CORNER</b><br>
+            <b style="font-size: 20px;">ROYAL FOOD CORNER</b><br>
             <small>Asansol, West Bengal</small>
         </center>
-        <div class="p-line" style="border-top: 1px dashed black; margin: 8px 0;"></div>
+        <div class="p-line"></div>
         <div style="display: flex; justify-content: space-between; font-size: 14px;">
             <b>${type}</b>
             <b>Table: ${table}</b>
         </div>
         <div style="font-size: 11px;">${new Date().toLocaleString()}</div>
-        <div class="p-line" style="border-top: 1px dashed black; margin: 8px 0;"></div>
+        <div class="p-line"></div>
         
         <div style="font-size: 16px; white-space: pre-wrap; line-height: 1.4; margin: 10px 0;">${items}</div>
         
         ${total ? `
-        <div class="p-line" style="border-top: 1px dashed black; margin: 8px 0;"></div>
+        <div class="p-line"></div>
         <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold;">
             <span>TOTAL:</span>
             <span>₹${total}</span>
         </div>` : ""}
         
-        <div class="p-line" style="border-top: 1px solid black; margin: 15px 0 5px 0;"></div>
+        <div style="border-top: 2px solid black; margin: 15px 0 5px 0;"></div>
         <center>
             <b style="font-size: 13px;">Thank You 🙏 Visit Again!</b><br>
             <small style="font-size: 10px;">RP Web Service</small>
@@ -220,8 +227,11 @@ function printDoc(type,table,itemsEnc,total){
     `;
 
     area.style.display="block";
-    window.print();
-    setTimeout(() => { area.style.display="none"; area.innerHTML=""; }, 1500);
+    
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+        window.print();
+    }, 300);
 }
 
 loadOrders();
