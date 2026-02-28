@@ -1,150 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Restaurant Admin</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Admin Panel</title>
+<style>
+body { background:#000; color:white; font-family:Arial; padding:20px; }
+.card { border:1px solid #444; padding:15px; margin:15px 0; border-radius:10px; }
+button { padding:8px 12px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
+.kot { background:#f4b400; }
+.bill { background:#0f9d58; color:white; }
+.paid { background:#d93025; color:white; }
+.manual { background:#4285f4; color:white; }
+</style>
 </head>
+<body>
 
-<body class="bg-black text-white p-6">
+<h1>ADMIN PANEL</h1>
 
-<script>
-// ===== LOGIN SYSTEM =====
-const ADMIN_ID = "Rohitprasad";
-const ADMIN_PASS = "00000000";
+<button onclick="loadOrders()">Refresh Orders</button>
+<button class="manual" onclick="manualOrder()">Manual Order</button>
 
-if(!sessionStorage.getItem("adminLogin")){
-    const id = prompt("Enter Admin ID:");
-    const pass = prompt("Enter Password:");
-    if(id !== ADMIN_ID || pass !== ADMIN_PASS){
-        document.body.innerHTML="<h1 style='color:red;text-align:center;margin-top:50px'>Access Denied</h1>";
-        throw new Error("Unauthorized");
-    }
-    sessionStorage.setItem("adminLogin","true");
-}
-</script>
-
-<h1 class="text-3xl font-bold mb-6">ADMIN PANEL</h1>
-
-<button onclick="fetchOrders()" class="bg-blue-600 px-4 py-2 rounded mb-6">
-Refresh Orders
-</button>
-
-<h2 class="text-xl mb-3">Active Orders</h2>
 <div id="orders"></div>
 
-<h2 class="text-xl mt-10 mb-3">Order History</h2>
+<h2>Order History</h2>
 <div id="history"></div>
 
 <script>
 
-// ===== YOUR FIXED GOOGLE SHEET CSV LINK =====
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTP_Hses8Fc-OoaI5zkdZlnhPL9VSXKJoIoopq-Td7GypERa_xC1Q5cl4zhwsk-ihrSB3v3k8C-yvAB/pub?output=csv";
+const sheetURL = "PASTE_YOUR_CSV_LINK_HERE";
 
-let activeBills = JSON.parse(localStorage.getItem("activeBills")) || {};
-let historyBills = JSON.parse(localStorage.getItem("historyBills")) || {};
-let processedRows = JSON.parse(localStorage.getItem("processedRows")) || [];
+let historyOrders = [];
 
-// ===== FETCH ORDERS =====
-async function fetchOrders(){
-    const res = await fetch(SHEET_URL + "&cb=" + Date.now());
+async function loadOrders(){
+    const res = await fetch(sheetURL);
     const data = await res.text();
     const rows = data.split("\n").slice(1);
 
-    rows.forEach((r,index)=>{
-        if(!r.trim()) return;
+    let orders = {};
 
-        if(processedRows.includes(index)) return;
+    rows.forEach(row=>{
+        let cols = row.split(",");
+        let table = cols[1];
+        let items = cols[2];
+        let total = parseFloat(cols[3]);
 
-        const cols = r.split(",");
-        const table = cols[1];
-        const items = cols[2];
-        const total = parseFloat(cols[3]) || 0;
-
-        if(!activeBills[table]){
-            activeBills[table] = {items:[], total:0};
+        if(!orders[table]){
+            orders[table] = {items:[], total:0};
         }
 
-        activeBills[table].items.push(items);
-        activeBills[table].total += total;
-
-        processedRows.push(index);
+        orders[table].items.push(items);
+        orders[table].total += total;
     });
 
-    saveData();
-    render();
+    displayOrders(orders);
 }
 
-// ===== RENDER ACTIVE =====
-function render(){
-    const div = document.getElementById("orders");
-    div.innerHTML="";
+function displayOrders(orders){
+    let div = document.getElementById("orders");
+    div.innerHTML = "";
 
-    Object.keys(activeBills).forEach(t=>{
-        const bill = activeBills[t];
+    for(let table in orders){
         div.innerHTML += `
-        <div class="border border-gray-700 p-4 mt-3 rounded">
-            <h3 class="text-lg font-bold">Table: ${t}</h3>
-            <div class="mt-2">${bill.items.join("<br>")}</div>
-            <div class="text-green-400 font-bold mt-2">Total: ₹${bill.total}</div>
-
-            <button onclick="printKOT('${t}')" class="bg-yellow-500 px-3 py-1 mt-3 mr-2 rounded">Print KOT</button>
-            <button onclick="printBill('${t}')" class="bg-green-600 px-3 py-1 mt-3 mr-2 rounded">Print Bill</button>
-            <button onclick="markPaid('${t}')" class="bg-red-600 px-3 py-1 mt-3 rounded">Mark Paid</button>
-        </div>`;
-    });
-
-    renderHistory();
+        <div class="card">
+            <h2>Table: ${table}</h2>
+            <p>Total: ₹${orders[table].total}</p>
+            <button class="kot" onclick="printKOT('${table}')">Print KOT</button>
+            <button class="bill" onclick="printBill('${table}', ${orders[table].total})">Print Bill</button>
+            <button class="paid" onclick="markPaid('${table}', ${orders[table].total})">Mark Paid</button>
+        </div>
+        `;
+    }
 }
 
-// ===== PRINT KOT =====
-function printKOT(t){
-    const w = window.open();
-    w.document.write("<h2>KOT - Table "+t+"</h2><hr>");
-    w.document.write(activeBills[t].items.join("<br>"));
-    w.print();
+function printKOT(table){
+    alert("Printing KOT for Table " + table);
+    window.print();
 }
 
-// ===== PRINT BILL =====
-function printBill(t){
-    const w = window.open();
-    w.document.write("<h2>FINAL BILL - Table "+t+"</h2><hr>");
-    w.document.write(activeBills[t].items.join("<br>"));
-    w.document.write("<hr><h3>Total: ₹"+activeBills[t].total+"</h3>");
-    w.print();
+function printBill(table,total){
+    alert("Printing Bill for Table " + table + " ₹"+total);
+    window.print();
 }
 
-// ===== MARK PAID =====
-function markPaid(t){
-    historyBills[t] = activeBills[t];
-    delete activeBills[t];
-    saveData();
-    render();
+function markPaid(table,total){
+    historyOrders.push({table,total});
+    document.getElementById("history").innerHTML += `
+        <div class="card">
+            Table: ${table} | ₹${total}
+        </div>
+    `;
+    alert("Moved to History");
 }
 
-// ===== HISTORY =====
-function renderHistory(){
-    const div = document.getElementById("history");
-    div.innerHTML="";
-    Object.keys(historyBills).forEach(t=>{
-        const bill = historyBills[t];
-        div.innerHTML += `
-        <div class="border border-gray-700 p-3 mt-2 bg-gray-900 rounded">
-            <h4>Table ${t} (Paid)</h4>
-            <p>Total: ₹${bill.total}</p>
-        </div>`;
-    });
+function manualOrder(){
+    let table = prompt("Enter Table Number:");
+    let amount = prompt("Enter Total Amount:");
+    if(table && amount){
+        document.getElementById("orders").innerHTML += `
+        <div class="card">
+            <h2>Table: ${table}</h2>
+            <p>Total: ₹${amount}</p>
+            <button class="kot" onclick="printKOT('${table}')">Print KOT</button>
+            <button class="bill" onclick="printBill('${table}', ${amount})">Print Bill</button>
+            <button class="paid" onclick="markPaid('${table}', ${amount})">Mark Paid</button>
+        </div>
+        `;
+    }
 }
 
-// ===== SAVE =====
-function saveData(){
-    localStorage.setItem("activeBills", JSON.stringify(activeBills));
-    localStorage.setItem("historyBills", JSON.stringify(historyBills));
-    localStorage.setItem("processedRows", JSON.stringify(processedRows));
-}
-
-render();
+loadOrders();
 
 </script>
 
