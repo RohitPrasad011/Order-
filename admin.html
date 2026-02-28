@@ -3,33 +3,38 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Royal Food POS — Re-print Enabled</title>
+<title>Royal Food POS — Print Fix & Toggle</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
 /* --- App UI --- */
 body { background:#05070a; color:#e2e8f0; font-family:sans-serif; -webkit-tap-highlight-color:transparent; }
-.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; transition: 0.3s; position: relative; }
-.selected-card { border-color: #3b82f6 !important; background: #1e293b !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-.history-card { border-color: #111827; background: #0f172a; opacity: 0.85; }
+.card { background:#111827; border:1px solid #1f2937; border-radius:15px; padding:15px; margin-bottom:15px; }
+.selected-card { border-color: #3b82f6 !important; background: #1e293b !important; }
+.history-card { border-color: #111827; background: #0f172a; opacity: 0.9; }
 
-button { font-weight:700; font-size:13px; height:44px; border-radius:10px; cursor:pointer; transition: 0.2s; }
-button:active { transform: scale(0.95); }
+button { font-weight:700; font-size:13px; height:44px; border-radius:10px; cursor:pointer; }
 .btn-kot { background:#ea580c; color:#fff; border-bottom:3px solid #9a3412; }
 .btn-bill { background:#3b82f6; color:#fff; border-bottom:3px solid #1d4ed8; }
-.btn-merge-action { background:#10b981; color:#fff; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; display: none; height: 55px; font-size: 16px; }
+.btn-merge-action { background:#10b981; color:#fff; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; width: 90%; max-width: 400px; display: none; height: 55px; }
 
-pre { background:#000; padding:10px; border-radius:10px; font-size:14px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; line-height:1.4; pointer-events: none; }
+pre { background:#000; padding:10px; border-radius:10px; font-size:14px; white-space:pre-wrap; color:#cbd5e1; border:1px solid #1f2937; pointer-events: none; }
 
-/* 🔥 PRINT ENGINE: 1-PAGE FORCE 🔥 */
+/* 🔴 FORCE WHITE PRINT - NO BLACK BACKGROUND 🔴 */
 @media print {
     @page { margin: 0; size: auto; }
-    html, body { height: auto !important; overflow: hidden !important; background: white !important; }
+    * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
     body * { display: none !important; }
-    #printSection, #printSection * { display: block !important; visibility: visible !important; }
+    #printSection, #printSection * { 
+        display: block !important; 
+        visibility: visible !important; 
+        background: white !important; 
+        color: black !important; 
+    }
     #printSection { 
         position: absolute; left: 0; top: 0; width: 100% !important; 
-        padding: 5mm !important; background: white !important; color: black !important;
+        padding: 10px !important; margin: 0 !important;
     }
     .print-line { border-top: 1px dashed black !important; margin: 6px 0; width: 100%; }
 }
@@ -48,12 +53,15 @@ pre { background:#000; padding:10px; border-radius:10px; font-size:14px; white-s
 </header>
 
 <div id="orderList"></div>
-<div id="historyHeader" class="my-6 flex items-center gap-3">
-    <hr class="flex-1 border-gray-800">
-    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">History (Orders Today)</span>
-    <hr class="flex-1 border-gray-800">
+
+<div class="my-6">
+    <button onclick="toggleHistory()" class="w-full flex items-center gap-3 bg-gray-900/50 p-2 rounded-lg border border-gray-800">
+        <hr class="flex-1 border-gray-700">
+        <span id="historyLabel" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center">History (Orders Today) ▼</span>
+        <hr class="flex-1 border-gray-700">
+    </button>
+    <div id="historyList" class="mt-4 hidden"></div>
 </div>
-<div id="historyList"></div>
 
 <button onclick="printMergedBill()" id="mergeActionButton" class="btn-merge-action font-black italic uppercase">
     Print Merged Bill (₹<span id="mergeTotal">0</span>)
@@ -132,6 +140,18 @@ function renderOrders() {
     });
 }
 
+function toggleHistory() {
+    const list = document.getElementById("historyList");
+    const label = document.getElementById("historyLabel");
+    if (list.classList.contains("hidden")) {
+        list.classList.remove("hidden");
+        label.innerText = "History (Orders Today) ▲";
+    } else {
+        list.classList.add("hidden");
+        label.innerText = "History (Orders Today) ▼";
+    }
+}
+
 function toggleMergeMode() {
     isMergeMode = !isMergeMode;
     document.getElementById("mergeBtnToggle").classList.toggle("bg-red-600");
@@ -190,7 +210,7 @@ function printDoc(type, table, itemsEnc, total) {
     
     let content = "";
     if(type === 'KOT') {
-        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black;">
+        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black; background:white;">
             <center><b style="font-size:22px; border:2px solid black; padding:2px 10px;">K.O.T</b><br><b style="font-size:24px; display:block; margin-top:10px;">TABLE: ${table}</b></center>
             <div class="print-line" style="border-style:solid !important;"></div>
             <div style="font-size:11px;">${new Date().toLocaleString()}</div>
@@ -200,7 +220,7 @@ function printDoc(type, table, itemsEnc, total) {
             <center>*** KITCHEN COPY ***</center>
         </div>`;
     } else {
-        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black;">
+        content = `<div style="width:100%; max-width:280px; font-family:monospace; color:black; background:white;">
             <center><b style="font-size:19px;">ROYAL FOOD CORNER</b><br><small>Asansol, West Bengal</small></center>
             <div class="print-line"></div>
             <div style="display:flex; justify-content:space-between; font-size:13px;"><b>INVOICE</b><b>Table: ${table}</b></div>
