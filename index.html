@@ -6,16 +6,25 @@
     <title>My Restaurant Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Hide scrollbar for category list */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .category-btn.active { background-color: #dc2626; color: white; border-color: #dc2626; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans pb-44">
+<body class="bg-gray-100 font-sans pb-56">
+
     <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative">
         
+        <!-- Header -->
         <div class="bg-red-600 p-6 text-white text-center rounded-b-[2.5rem] shadow-md">
             <h1 class="text-3xl font-black italic tracking-tighter uppercase">My Restaurant</h1>
             <p class="text-[10px] opacity-90 mt-1 uppercase tracking-widest">Delicious & Fresh Food</p>
         </div>
 
-        <div class="p-6">
+        <!-- Table Selection -->
+        <div class="p-6 pb-2">
             <label class="block text-gray-500 text-[10px] font-black mb-1 uppercase tracking-widest ml-1">Select Table</label>
             <select id="tableNo" class="w-full p-4 border-2 border-red-50 rounded-2xl bg-gray-50 font-bold text-red-600 outline-none shadow-sm appearance-none">
                 <option value="1">Table No. 1</option>
@@ -31,149 +40,75 @@
             </select>
         </div>
 
-        <div id="menuList" class="px-6 space-y-4">
+        <!-- Categories Filter -->
+        <div class="sticky top-0 z-10 bg-white py-3 shadow-sm border-b border-gray-100">
+            <div id="categoryList" class="flex overflow-x-auto px-6 gap-3 no-scrollbar whitespace-nowrap">
+                <!-- Categories will be injected here via JS -->
+            </div>
+        </div>
+
+        <!-- Menu Items -->
+        <div id="menuList" class="px-6 space-y-4 pb-4 mt-2">
             <p class="text-center py-10 text-gray-400 animate-pulse uppercase text-xs font-bold">Loading Menu...</p>
         </div>
 
+        <!-- Fixed Bottom Bar -->
         <div class="fixed bottom-0 max-w-md w-full bg-white p-6 border-t shadow-[0_-15px_35px_rgba(0,0,0,0.1)] rounded-t-[2.5rem]">
-            <div class="flex justify-between items-center mb-5 px-2">
+            
+            <!-- Surcharge Options -->
+            <div class="mb-4 space-y-2">
+                <p class="text-gray-400 text-[9px] font-black uppercase tracking-widest ml-1">Add Surcharges</p>
+                <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <label class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-xl text-xs font-bold text-gray-600 cursor-pointer select-none border border-transparent">
+                        <input type="checkbox" id="chkParcel" class="w-4 h-4 accent-red-600" onchange="calculateTotal()"> 
+                        Parcel (+₹10)
+                    </label>
+                    <label class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-xl text-xs font-bold text-gray-600 cursor-pointer select-none border border-transparent">
+                        <input type="checkbox" id="chkGST" class="w-4 h-4 accent-red-600" onchange="calculateTotal()"> 
+                        GST (5%)
+                    </label>
+                </div>
+                <!-- Manual Extra Charge Input -->
+                <div class="flex items-center gap-2">
+                     <input type="number" id="extraChargeInput" placeholder="Other Charge (₹)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs font-bold text-gray-700 outline-none" oninput="calculateTotal()">
+                </div>
+            </div>
+
+            <!-- Total & Cart Count -->
+            <div class="flex justify-between items-end mb-4 px-2 border-t border-gray-100 pt-3">
                 <div>
                     <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest leading-none mb-1">Total Bill</p>
                     <p class="text-3xl font-black text-gray-900 leading-none">₹<span id="totalDisplay">0</span></p>
                 </div>
-                <div id="cartStatus" class="hidden">
+                <div id="cartStatus">
                     <span id="itemCount" class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">0 Items</span>
                 </div>
             </div>
+
+            <!-- Confirm Button -->
             <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest">Confirm Order</button>
         </div>
     </div>
 
     <script>
+        // --- CONFIGURATION ---
+        // Apni Google Sheet ka link yahan lagayein (CSV format)
         const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
-        const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
         
+        // Apne Google Form ka Link aur Entry IDs yahan change karein
+        const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
+        const ENTRY_TABLE = 'entry.1750325692';
+        const ENTRY_ORDER = 'entry.732456507';
+        const ENTRY_TOTAL = 'entry.424181828';
+
+        // --- LOGIC ---
         let cart = {};
         let menuData = [];
+        let categories = ['All']; // Default category
 
         async function loadMenu() {
             try {
                 const response = await fetch(MENU_SHEET);
                 const data = await response.text();
-                const rows = data.split('\n').slice(1);
-                const container = document.getElementById('menuList');
-                container.innerHTML = "";
-
-                rows.forEach((row, index) => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    if(cols.length < 2) return;
-
-                    const name = cols[0].replace(/"/g, '').trim();
-                    const price = parseInt(cols[1].replace(/"/g, '').trim());
-                    const img = cols[2] ? cols[2].replace(/"/g, '').trim() : "";
-                    const desc = cols[4] ? cols[4].replace(/"/g, '').trim() : "Delicious food prepared fresh.";
-
-                    if(name && !isNaN(price)) {
-                        menuData.push({name, price});
-                        container.innerHTML += `
-                            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-4">
-                                <div class="flex p-4 items-center">
-                                    <img src="${img}" class="w-16 h-16 object-cover rounded-2xl shadow-inner bg-gray-50" onerror="this.src='https://via.placeholder.com/100?text=Food'">
-                                    <div class="ml-4 flex-1">
-                                        <h3 class="font-bold text-gray-800 text-sm leading-tight">${name}</h3>
-                                        <p class="text-red-600 font-black text-sm mt-1">₹${price}</p>
-                                    </div>
-                                    <div class="flex items-center bg-gray-100 rounded-xl p-1">
-                                        <button onclick="updateQty('${name}', -1)" class="w-8 h-8 bg-white rounded-lg shadow-sm text-gray-400 font-bold">-</button>
-                                        <span id="qty-${name}" class="px-3 font-black text-gray-800 text-xs">0</span>
-                                        <button onclick="updateQty('${name}', 1)" class="w-8 h-8 bg-red-600 rounded-lg shadow-sm text-white font-bold">+</button>
-                                    </div>
-                                </div>
-                                <button onclick="toggleDetails(${index})" class="w-full bg-gray-50/50 py-1 text-[9px] font-bold text-gray-400 flex items-center justify-center gap-1 uppercase border-t border-gray-50">
-                                    View Details <i id="icon-${index}" class="fas fa-chevron-down transition-transform"></i>
-                                </button>
-                                <div id="details-${index}" class="hidden px-5 py-3 text-[11px] text-gray-500 bg-gray-50 border-t border-gray-100 italic">
-                                    ${desc}
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-            } catch (e) { container.innerHTML = "Error!"; }
-        }
-
-        function toggleDetails(id) {
-            const el = document.getElementById(`details-${id}`);
-            const icon = document.getElementById(`icon-${id}`);
-            el.classList.toggle('hidden');
-            icon.classList.toggle('rotate-180');
-        }
-
-        function updateQty(name, change) {
-            if (!cart[name]) cart[name] = 0;
-            cart[name] += change;
-            if (cart[name] < 0) cart[name] = 0;
-            document.getElementById(`qty-${name}`).innerText = cart[name];
-            calculateTotal();
-        }
-
-        function calculateTotal() {
-            let total = 0, count = 0;
-            for (let name in cart) {
-                if(cart[name] > 0) {
-                    let item = menuData.find(m => m.name === name);
-                    total += (item.price * cart[name]);
-                    count += cart[name];
-                }
-            }
-            document.getElementById('totalDisplay').innerText = total;
-            document.getElementById('itemCount').innerText = `${count} Items`;
-            document.getElementById('cartStatus').classList.toggle('hidden', count === 0);
-        }
-
-        function placeOrder() {
-            let orderLines = [];
-            let totalBill = 0;
-            
-            for (let name in cart) {
-                if(cart[name] > 0) {
-                    let item = menuData.find(m => m.name === name);
-                    let subtotal = item.price * cart[name];
-                    
-                    // अब यह डेटा एक के नीचे एक जाएगा
-                    // Chicken Biriyani (x1)
-                    // @₹100 = ₹100
-                    orderLines.push(`${name} (x${cart[name]})\n@₹${item.price} = ₹${subtotal}`);
-                    totalBill += subtotal;
-                }
-            }
-
-            if(orderLines.length === 0) return alert("Please select items!");
-
-            // '\n' का मतलब नई लाइन है। इससे शीट में डेटा एक के नीचे एक आएगा।
-            const finalString = orderLines.join("\n\n"); 
-
-            const table = document.getElementById('tableNo').value;
-            const btn = document.getElementById('orderBtn');
-            btn.disabled = true; btn.innerText = "Processing...";
-
-            const formData = new URLSearchParams();
-            formData.append('entry.1750325692', "Table " + table);
-            formData.append('entry.732456507', finalString); 
-            formData.append('entry.424181828', totalBill);
-
-            fetch(FORM_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString()
-            })
-            .then(() => {
-                alert("Order Placed! ✅ Check your sheet.");
-                location.reload();
-            });
-        }
-        loadMenu();
-    </script>
-</body>
-</html>
+                const rows = data.split('\n').slice(1); // Skip header
+                const container = document.getElementBy
