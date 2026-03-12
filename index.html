@@ -1,185 +1,337 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Royal Food - Order</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .category-btn.active { background-color: #dc2626; color: white; border-color: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); }
-        .menu-item-card { transition: all 0.2s; border: 1px solid #f3f4f6; }
-        .menu-item-card:active { transform: scale(0.98); background-color: #fffafa; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Royal Food - Order</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<style>
+.no-scrollbar::-webkit-scrollbar{display:none;}
+.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}
+
+.category-btn.active{
+background-color:#dc2626;
+color:white;
+border-color:#dc2626;
+box-shadow:0 4px 12px rgba(220,38,38,0.3);
+}
+
+.menu-item-card{
+transition:all 0.2s;
+border:1px solid #f3f4f6;
+}
+
+.menu-item-card:active{
+transform:scale(0.98);
+background-color:#fffafa;
+}
+
+.line-clamp-2{
+display:-webkit-box;
+-webkit-line-clamp:2;
+-webkit-box-orient:vertical;
+overflow:hidden;
+}
+</style>
 </head>
+
 <body class="bg-gray-50 font-sans pb-64">
 
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
-        
-        <div class="bg-red-600 p-8 text-white text-center rounded-b-[3rem] shadow-lg">
-            <h1 class="text-4xl font-black italic tracking-tighter uppercase">Royal Food</h1>
-            <p class="text-[10px] opacity-80 mt-1 uppercase tracking-[0.2em] font-bold">Asansol, West Bengal</p>
-        </div>
+<div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative">
 
-        <div class="p-6 pb-2">
-            <label class="block text-gray-400 text-[10px] font-black mb-2 uppercase tracking-widest ml-1">Select Table</label>
-            <select id="tableNo" class="w-full p-4 border-2 border-gray-100 rounded-2xl bg-gray-50 font-bold text-gray-800 outline-none appearance-none focus:border-red-500 transition-all">
-                <option value="Table 1">Table No. 1</option>
-                <option value="Table 2">Table No. 2</option>
-                <option value="Table 3">Table No. 3</option>
-                <option value="Table 4">Table No. 4</option>
-                <option value="Table 5">Table No. 5</option>
-            </select>
-        </div>
+<div class="bg-red-600 p-8 text-white text-center rounded-b-[3rem] shadow-lg">
+<h1 class="text-4xl font-black italic tracking-tighter uppercase">Royal Food</h1>
+<p class="text-[10px] opacity-80 mt-1 uppercase tracking-[0.2em] font-bold">
+Asansol, West Bengal
+</p>
+</div>
 
-        <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-md py-4 border-b border-gray-100">
-            <div id="categoryList" class="flex overflow-x-auto px-6 gap-3 no-scrollbar whitespace-nowrap">
-                </div>
-        </div>
+<div class="p-6 pb-2">
 
-        <div id="menuList" class="px-6 space-y-6 pt-6">
-            <p class="text-center py-20 text-gray-400 animate-pulse uppercase text-xs font-black">Preparing Menu...</p>
-        </div>
+<label class="block text-gray-400 text-[10px] font-black mb-2 uppercase tracking-widest ml-1">
+Select Table
+</label>
 
-        <div class="fixed bottom-0 max-w-md w-full bg-white p-6 border-t border-gray-100 shadow-[0_-20px_40px_rgba(0,0,0,0.08)] rounded-t-[2.5rem] z-50">
-            <div class="flex justify-between items-center mb-4">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" id="chkParcel" class="w-5 h-5 accent-red-600" onchange="calculateTotal()"> 
-                    <span class="text-sm font-bold text-gray-700">Parcel (+₹10)</span>
-                </label>
-                <div class="text-right">
-                    <p class="text-[10px] font-black text-gray-400 uppercase">Total Bill</p>
-                    <p class="text-3xl font-black text-gray-900">₹<span id="totalDisplay">0</span></p>
-                </div>
-            </div>
-            <button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all uppercase tracking-widest">
-                Confirm Order
-            </button>
-        </div>
-    </div>
+<select id="tableNo" class="w-full p-4 border-2 border-gray-100 rounded-2xl bg-gray-50 font-bold text-gray-800 outline-none appearance-none focus:border-red-500 transition-all">
 
-    <script>
-        const MENU_SHEET = "https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
-        const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
-        
-        const ENTRY_TABLE = 'entry.1750325692';
-        const ENTRY_ORDER = 'entry.732456507';
-        const ENTRY_TOTAL = 'entry.424181828';
+<option value="Table 1">Table No. 1</option>
+<option value="Table 2">Table No. 2</option>
+<option value="Table 3">Table No. 3</option>
+<option value="Table 4">Table No. 4</option>
+<option value="Table 5">Table No. 5</option>
 
-        let cart = {};
-        let menuData = [];
-        let currentCategory = 'All';
+</select>
+</div>
 
-        async function loadMenu() {
-            try {
-                const response = await fetch(MENU_SHEET);
-                const csvData = await response.text();
-                const rows = csvData.split('\n').slice(1);
-                
-                menuData = rows.map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return {
-                        name: cols[0]?.replace(/"/g, '').trim(),
-                        price: parseInt(cols[1]) || 0,
-                        image: cols[2]?.replace(/"/g, '').trim(), // Column C
-                        category: cols[3]?.replace(/"/g, '').trim() || 'General', // Column D
-                        desc: cols[4]?.replace(/"/g, '').trim() || '' // Column E
-                    };
-                }).filter(item => item.name);
+<div class="sticky top-0 z-10 bg-white/95 backdrop-blur-md py-4 border-b border-gray-100">
 
-                const uniqueCats = ['All', ...new Set(menuData.map(i => i.category))];
-                renderCategories(uniqueCats);
-                renderMenu();
-            } catch (e) {
-                document.getElementById('menuList').innerHTML = "Failed to load.";
-            }
-        }
+<div id="categoryList" class="flex overflow-x-auto px-6 gap-3 no-scrollbar whitespace-nowrap">
+</div>
 
-        function renderCategories(cats) {
-            const list = document.getElementById('categoryList');
-            list.innerHTML = cats.map(c => `
-                <button onclick="filterCategory('${c}')" class="category-btn px-6 py-2 rounded-full border-2 border-gray-100 font-bold text-sm ${currentCategory === c ? 'active' : 'text-gray-400 bg-white'}">
-                    ${c}
-                </button>
-            `).join('');
-        }
+</div>
 
-        function filterCategory(c) {
-            currentCategory = c;
-            const cats = ['All', ...new Set(menuData.map(i => i.category))];
-            renderCategories(cats);
-            renderMenu();
-        }
+<div id="menuList" class="px-6 space-y-6 pt-6">
+<p class="text-center py-20 text-gray-400 animate-pulse uppercase text-xs font-black">
+Preparing Menu...
+</p>
+</div>
 
-        function renderMenu() {
-            const list = document.getElementById('menuList');
-            const filtered = currentCategory === 'All' ? menuData : menuData.filter(i => i.category === currentCategory);
-            
-            list.innerHTML = filtered.map(item => `
-                <div class="menu-item-card bg-white p-3 rounded-3xl shadow-sm flex gap-4 items-center">
-                    <img src="${item.image}" class="w-24 h-24 object-cover rounded-2xl bg-gray-100" onerror="this.src='https://placehold.co/100x100?text=Food'">
-                    <div class="flex-1">
-                        <h3 class="font-black text-gray-800 leading-tight">${item.name}</h3>
-                        <p class="text-[10px] text-gray-400 line-clamp-2 mt-0.5">${item.desc}</p>
-                        <div class="flex justify-between items-center mt-2">
-                            <span class="text-red-600 font-black text-lg">₹${item.price}</span>
-                            <div class="flex items-center gap-3 bg-gray-50 p-1 rounded-xl border">
-                                <button onclick="updateCart('${item.name.replace(/'/g, "\\'")}', -1, ${item.price})" class="w-8 h-8 flex items-center justify-center text-gray-400"><i class="fas fa-minus text-xs"></i></button>
-                                <span id="qty-${item.name}" class="font-bold text-gray-800 min-w-[15px] text-center text-sm">${cart[item.name]?.qty || 0}</span>
-                                <button onclick="updateCart('${item.name.replace(/'/g, "\\'")}', 1, ${item.price})" class="w-8 h-8 flex items-center justify-center text-red-600 bg-white rounded-lg shadow-sm"><i class="fas fa-plus text-xs"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+<div class="fixed bottom-0 max-w-md w-full bg-white p-6 border-t border-gray-100 shadow-[0_-20px_40px_rgba(0,0,0,0.08)] rounded-t-[2.5rem] z-50">
 
-        function updateCart(name, change, price) {
-            if (!cart[name]) cart[name] = { qty: 0, price: price };
-            cart[name].qty += change;
-            if (cart[name].qty <= 0) delete cart[name];
-            
-            const qtyEl = document.getElementById(`qty-${name}`);
-            if(qtyEl) qtyEl.innerText = cart[name]?.qty || 0;
-            calculateTotal();
-        }
+<div class="flex justify-between items-center mb-4">
 
-        function calculateTotal() {
-            let total = Object.values(cart).reduce((sum, item) => sum + (item.qty * item.price), 0);
-            if (document.getElementById('chkParcel').checked) total += 10;
-            document.getElementById('totalDisplay').innerText = total;
-        }
+<label class="flex items-center gap-2 cursor-pointer">
 
-        async function placeOrder() {
-            if (Object.keys(cart).length === 0) return alert("Select items!");
-            const btn = document.getElementById('orderBtn');
-            btn.disabled = true;
-            btn.innerText = "Processing...";
+<input type="checkbox" id="chkParcel" class="w-5 h-5 accent-red-600" onchange="calculateTotal()">
 
-            const table = document.getElementById('tableNo').value;
-            const orderSummary = Object.entries(cart).map(([n, o]) => `${n} x${o.qty}`).join('\n');
-            const finalTotal = document.getElementById('totalDisplay').innerText;
+<span class="text-sm font-bold text-gray-700">
+Parcel (+₹10)
+</span>
 
-            const formData = new FormData();
-            formData.append(ENTRY_TABLE, table);
-            formData.append(ENTRY_ORDER, orderSummary);
-            formData.append(ENTRY_TOTAL, finalTotal);
+</label>
 
-            try {
-                await fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData });
-                alert("Order confirmed!");
-                location.reload(); 
-            } catch (e) {
-                alert("Error!");
-                btn.disabled = false;
-                btn.innerText = "Confirm Order";
-            }
-        }
+<div class="text-right">
 
-        loadMenu();
-    </script>
+<p class="text-[10px] font-black text-gray-400 uppercase">
+Total Bill
+</p>
+
+<p class="text-3xl font-black text-gray-900">
+₹<span id="totalDisplay">0</span>
+</p>
+
+</div>
+
+</div>
+
+<button onclick="placeOrder()" id="orderBtn" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all uppercase tracking-widest">
+Confirm Order
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+const MENU_SHEET="https://docs.google.com/spreadsheets/d/1y4tXP_8SZ_iUHYcl7vA6gq72zILeEoVHCuSOXyi2ubo/gviz/tq?tqx=out:csv&sheet=Sheet1";
+
+const FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLSe4DDIqsgSI84WB_ShzfMA7zhWJMKswxY8tAT1e0OF3_4bwxw/formResponse";
+
+const ENTRY_TABLE='entry.1750325692';
+const ENTRY_ORDER='entry.732456507';
+const ENTRY_TOTAL='entry.424181828';
+
+let cart={};
+let menuData=[];
+let currentCategory='All';
+
+async function loadMenu(){
+
+try{
+
+const response=await fetch(MENU_SHEET);
+
+const csvData=await response.text();
+
+const rows=csvData.split('\n').slice(1);
+
+menuData=rows.map(row=>{
+
+const cols=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+
+return{
+
+name:cols[0]?.replace(/"/g,'').trim(),
+
+price:parseInt(cols[1]?.replace(/"/g,'').trim())||0,
+
+image:cols[2]?.replace(/"/g,'').trim(),
+
+category:cols[3]?.replace(/"/g,'').trim()||'General',
+
+desc:cols[4]?cols[4].replace(/"/g,'').trim():''
+};
+
+}).filter(item=>item.name);
+
+const uniqueCats=['All',...new Set(menuData.map(i=>i.category))];
+
+renderCategories(uniqueCats);
+
+renderMenu();
+
+}
+
+catch(e){
+
+document.getElementById('menuList').innerHTML="Failed to load.";
+
+}
+
+}
+
+function renderCategories(cats){
+
+const list=document.getElementById('categoryList');
+
+list.innerHTML=cats.map(c=>`
+
+<button onclick="filterCategory('${c}')" class="category-btn px-6 py-2 rounded-full border-2 border-gray-100 font-bold text-sm ${currentCategory===c?'active':'text-gray-400 bg-white'}">
+
+${c}
+
+</button>
+
+`).join('');
+
+}
+
+function filterCategory(c){
+
+currentCategory=c;
+
+const cats=['All',...new Set(menuData.map(i=>i.category))];
+
+renderCategories(cats);
+
+renderMenu();
+
+}
+
+function renderMenu(){
+
+const list=document.getElementById('menuList');
+
+const filtered=currentCategory==='All'?menuData:menuData.filter(i=>i.category===currentCategory);
+
+list.innerHTML=filtered.map(item=>`
+
+<div class="menu-item-card bg-white p-3 rounded-3xl shadow-sm flex gap-4 items-center">
+
+<img src="${item.image}" class="w-24 h-24 object-cover rounded-2xl bg-gray-100" onerror="this.src='https://placehold.co/100x100?text=Food'">
+
+<div class="flex-1">
+
+<h3 class="font-black text-gray-800 leading-tight">${item.name}</h3>
+
+<p class="text-[10px] text-gray-400 line-clamp-2 mt-0.5">${item.desc}</p>
+
+<div class="flex justify-between items-center mt-2">
+
+<span class="text-red-600 font-black text-lg">₹${item.price}</span>
+
+<div class="flex items-center gap-3 bg-gray-50 p-1 rounded-xl border">
+
+<button onclick="updateCart('${item.name.replace(/'/g,"\\'")}',-1,${item.price})" class="w-8 h-8 flex items-center justify-center text-gray-400">
+
+<i class="fas fa-minus text-xs"></i>
+
+</button>
+
+<span id="qty-${item.name}" class="font-bold text-gray-800 min-w-[15px] text-center text-sm">
+
+${cart[item.name]?.qty||0}
+
+</span>
+
+<button onclick="updateCart('${item.name.replace(/'/g,"\\'")}',1,${item.price})" class="w-8 h-8 flex items-center justify-center text-red-600 bg-white rounded-lg shadow-sm">
+
+<i class="fas fa-plus text-xs"></i>
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+`).join('');
+
+}
+
+function updateCart(name,change,price){
+
+if(!cart[name])cart[name]={qty:0,price:price};
+
+cart[name].qty+=change;
+
+if(cart[name].qty<=0)delete cart[name];
+
+const qtyEl=document.getElementById(`qty-${name}`);
+
+if(qtyEl)qtyEl.innerText=cart[name]?.qty||0;
+
+calculateTotal();
+
+}
+
+function calculateTotal(){
+
+let total=Object.values(cart).reduce((sum,item)=>sum+(item.qty*item.price),0);
+
+if(document.getElementById('chkParcel').checked)total+=10;
+
+document.getElementById('totalDisplay').innerText=total;
+
+}
+
+async function placeOrder(){
+
+if(Object.keys(cart).length===0)return alert("Select items!");
+
+const btn=document.getElementById('orderBtn');
+
+btn.disabled=true;
+
+btn.innerText="Processing...";
+
+const table=document.getElementById('tableNo').value;
+
+const orderSummary=Object.entries(cart).map(([n,o])=>`${n} x${o.qty}`).join('\n');
+
+const finalTotal=document.getElementById('totalDisplay').innerText;
+
+const formData=new FormData();
+
+formData.append(ENTRY_TABLE,table);
+
+formData.append(ENTRY_ORDER,orderSummary);
+
+formData.append(ENTRY_TOTAL,finalTotal);
+
+try{
+
+await fetch(FORM_URL,{method:'POST',mode:'no-cors',body:formData});
+
+alert("Order confirmed!");
+
+location.reload();
+
+}
+
+catch(e){
+
+alert("Error!");
+
+btn.disabled=false;
+
+btn.innerText="Confirm Order";
+
+}
+
+}
+
+loadMenu();
+
+</script>
+
 </body>
 </html>
